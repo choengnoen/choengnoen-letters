@@ -179,6 +179,7 @@
   }
   function handleAuth(user, errorMsg) {
     if (!user) { appStarted = false; renderAuthGate(errorMsg); return; }
+    S.team = FBL.team();   // ก่อนล็อกอินได้แค่สมุดชื่อ (ไม่มีสถานะเจ้าของ/ผู้ดูแล) — ล็อกอินแล้วใช้รายชื่อเต็มที่ชั้นเชื่อมต่อโหลดไว้
     const g = gate(); g.classList.remove('show'); g.innerHTML = '';
     startApp();
   }
@@ -600,6 +601,32 @@
   };
 
   /* ======================= ตั้งค่า ======================= */
+  /* สมุดชื่อล็อกอิน (แผน 6) — เจ้าของระบบกดย้ายครั้งเดียว (ใช้ร่วม 3 ระบบ: หนังสือราชการ / ควบคุมงานโครงการ / ผังจราจร)
+     หน้าล็อกอินเปิดดูได้โดยไม่ต้องล็อกอิน จึงอ่านได้เฉพาะ "ชื่อ → อีเมลสังเคราะห์" จากสมุดชื่อ (login_directory)
+     หลังย้าย ตารางรายชื่อทีม (มีสถานะเจ้าของ/ผู้ดูแล) จะอ่านได้เฉพาะสมาชิกที่ล็อกอินแล้ว — ระหว่างย้ายไม่มีใครล็อกอินไม่ได้ */
+  async function renderDirNotice(el) {
+    const box = el.querySelector('#dirNotice');
+    if (!box || !FBL.user || !FBL.user.isOwner || FBL.mode === 'demo' || !FBL.loginDirStatus) return;
+    let st;
+    try { st = await FBL.loginDirStatus(); } catch (e) { box.innerHTML = ''; return; }
+    if (!box.isConnected) return;
+    const bad = st.missing.length + st.extra.length;
+    if (st.ready && !bad) { box.innerHTML = '<p class="hint" style="margin-top:12px">🔒 สมุดชื่อล็อกอิน: ย้ายแล้ว — คนที่ยังไม่ล็อกอินมองไม่เห็นว่าใครเป็นเจ้าของ/ผู้ดูแลระบบ</p>'; return; }
+    const why = !st.ready
+      ? 'ยังไม่ได้ย้ายรายชื่อไปสมุดชื่อล็อกอิน — ตอนนี้คนนอกที่เปิดหน้านี้ยังเห็นว่าใครเป็นเจ้าของ/ผู้ดูแลระบบ กดปุ่มด้านล่างครั้งเดียวเพื่อย้าย (ไม่กระทบการล็อกอินของใคร; รายชื่อนี้ใช้ร่วมกับอีก 2 ระบบในโปรเจกต์เดียวกัน)'
+      : 'สมุดชื่อล็อกอินไม่ตรงกับรายชื่อทีม ' + bad + ' ชื่อ (' + st.missing.concat(st.extra).join(', ') + ') — กดซิงก์เพื่อให้ตรงกัน';
+    box.innerHTML = '<div style="margin-top:12px;padding:12px;border:1px solid #f59e0b;background:#fff8e1;border-radius:10px;color:#7a4b00;font-size:13px">⚠ ' + esc(why) +
+      '<div style="margin-top:8px"><button class="btn btn-sm btn-primary" id="dirMigrate">' + (st.ready ? 'ซิงก์สมุดชื่อล็อกอิน' : 'ย้ายรายชื่อไปสมุดชื่อล็อกอิน') + '</button></div></div>';
+    const b = box.querySelector('#dirMigrate');
+    b.onclick = async function () {
+      const done = A.busy(b, 'กำลังดำเนินการ...');
+      try { const r = await FBL.migrateLoginDirectory(); A.toast('ย้ายสมุดชื่อล็อกอินเรียบร้อย (' + r.total + ' ชื่อ)'); }
+      catch (e) { A.toast(e.message, true); }
+      done();
+      renderDirNotice(el);
+    };
+  }
+
   A.views.settings = async function (el) {
     const u = FBL.user, own = u.isOwner, can = A.can();
     const trash = S.letters.filter(function (l) { return l.deletedAt; });
@@ -611,6 +638,7 @@
           (own ? '<td class="nowrap">' + (m.isOwner ? '' : '<button class="btn btn-sm btn-outline" data-adm="' + esc(m.name) + '">' + (m.isAdmin ? 'ถอดผู้ดูแล' : 'ตั้งเป็นผู้ดูแล') + '</button> ' +
             '<button class="btn btn-sm btn-outline" data-rpw="' + esc(m.name) + '">ตั้งรหัสใหม่</button> <button class="btn btn-sm btn-danger" data-rm="' + esc(m.name) + '">ลบ</button>') + '</td>' : '') + '</tr>';
       }).join('') + '</tbody></table></div>' +
+      (own ? '<div id="dirNotice"></div>' : '') +
       '<div class="flex" style="margin-top:12px"><button class="btn btn-outline btn-sm" id="stMyPw">เปลี่ยนรหัสผ่านของฉัน</button></div></div>' +
       '<div class="card"><div class="section-title">ถังขยะ <span class="sub">' + trash.length + ' ฉบับ</span></div>' +
       (trash.length ? '<div class="table-wrap"><table class="data"><tbody>' + trash.map(function (l) {
@@ -627,6 +655,7 @@
       (can ? '<div class="card"><div class="section-title">ประวัติการแก้ไขล่าสุด</div><div id="stLog" class="small muted">กำลังโหลด...</div></div>' : '') + '</div></div>';
     const q = function (s) { return el.querySelector(s); };
     if (own) {
+      renderDirNotice(el);
       q('#stAdd').onclick = function () {
         const m = A.modal({
           title: 'เพิ่มผู้ใช้', size: 'narrow',
