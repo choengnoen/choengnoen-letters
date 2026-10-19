@@ -345,11 +345,12 @@
   }
   function bindCommon(el) {
     el.querySelectorAll('[data-open]').forEach(function (b) {
-      b.onclick = function (e) {
+      const openIt = function (e) {
         e.stopPropagation();
         const v = b.dataset.open;
         if (VIEWS.indexOf(v) >= 0) A.go(v); else A.openLetter(v);
       };
+      if (b.tagName === 'TR') b.ondblclick = openIt; else b.onclick = openIt; // แถวในตาราง: ดับเบิลคลิกถึงจะเปิด
     });
     el.querySelectorAll('[data-go]').forEach(function (b) { b.onclick = function () { A.go(b.dataset.go); }; });
   }
