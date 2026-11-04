@@ -688,7 +688,7 @@
         '<p class="hint" style="margin:4px 0 8px">ใช้เมื่อเคยเก็บไฟล์ใน Firestore ก่อนตั้งค่า Drive — ลบออกจาก Firestore เฉพาะไฟล์ที่ Drive ยืนยันว่าครบแล้ว หยุดกลางทางกดใหม่ได้</p>' +
         '<button class="btn btn-outline" id="stMvDrive">เริ่มย้ายไฟล์</button><div id="stMvInfo" class="hint" style="margin-top:6px"></div></div>' : '') +
       (FBL.mode === 'demo' ? '<button class="btn btn-danger" id="stReset" style="margin-top:8px">ล้างข้อมูลทดลองทั้งหมด</button>' : '') + '</div>' +
-      (can ? '<div class="card"><div class="section-title">ประวัติการแก้ไขล่าสุด</div><div id="stLog" class="small muted">กำลังโหลด...</div></div>' : '') + '</div></div>';
+      '</div></div>';
     const q = function (s) { return el.querySelector(s); };
     if (own) {
       renderDirNotice(el);
@@ -758,15 +758,6 @@
       if (!(await A.confirm('ล้างข้อมูลทดลองทั้งหมดในเบราว์เซอร์นี้?', 'ล้างข้อมูล', true))) return;
       FBL.resetDemo(); location.reload();
     };
-    if (can) {
-      try {
-        const log = await FBL.loadLog(60);
-        const box = q('#stLog');
-        if (box) box.innerHTML = log.length ? '<div class="table-wrap"><table class="data"><tbody>' + log.map(function (x) {
-          return '<tr><td class="nowrap">' + esc((x.ts || '').slice(0, 16).replace('T', ' ')) + '</td><td>' + esc(x.actorName) + '</td><td>' + esc(x.action) + '</td><td>' + esc(x.summary) + '</td></tr>';
-        }).join('') + '</tbody></table></div>' : 'ยังไม่มี';
-      } catch (e) { const box = q('#stLog'); if (box) box.textContent = e.message; }
-    }
   };
   function pwDialog(name) {
     const m = A.modal({
