@@ -31,6 +31,8 @@
 }
 *{box-sizing:border-box}
 html,body{margin:0;padding:0}
+/* จองที่แถบเลื่อนไว้เสมอ ไม่ให้หน้าเว็บขยับกว้าง-แคบเมื่อสลับแท็บที่เนื้อหาสั้น/ยาว */
+html{overflow-y:scroll}
 body{font-family:'Sarabun',sans-serif;background:var(--paper);color:var(--ink);font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased}
 h1,h2,h3,h4,.display{font-family:'Kanit',sans-serif;font-weight:700}
 .num{font-variant-numeric:tabular-nums}
@@ -204,7 +206,6 @@ table.data td.c,table.data th.c{text-align:center}
 pre.out{white-space:pre-wrap;font-family:'Sarabun',sans-serif;background:#fafcfe;border:1px solid var(--line);border-radius:10px;padding:12px;font-size:14px;max-height:60vh;overflow:auto}
 
 /* ---------- หน้าล็อกอิน (เหมือนระบบผู้ควบคุมงานโครงการ) ---------- */
-html:has(.auth-gate.show){overflow-y:scroll}
 .auth-gate{position:fixed;inset:0;z-index:10000;display:none;align-items:center;justify-content:center;padding:18px;overflow:auto;background:linear-gradient(160deg,#0a2540 0%,#123a5e 55%,#1f5fbf 100%)}
 .auth-gate.show{display:flex}
 .auth-card{background:#fff;border-radius:18px;padding:30px 28px 26px;width:100%;max-width:410px;box-shadow:0 20px 60px rgba(0,0,0,.3);text-align:center}
