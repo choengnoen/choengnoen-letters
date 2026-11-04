@@ -30,12 +30,26 @@
   /* ======================= จัดหน้า ======================= */
   const PAGE = { w: 210, h: 297, land: { w: 297, h: 210, m: 15 } };
   const M = CFG.marginsMm, BODY_W = PAGE.w - M.left - M.right, BODY_H = PAGE.h - M.top - M.bottom;
-  const PT = 25.4 / 72, IND = 25, BEFORE = 2.1;
+  const PT = 25.4 / 72, PX = 96 / 25.4, IND = 25, BEFORE = 6 * PT;
+  const R_ORG = 35 * PT, GARUDA = 15, TEXT_CENTER = BODY_W / 2;
   const seg = (typeof Intl !== 'undefined' && Intl.Segmenter) ? new Intl.Segmenter('th', { granularity: 'word' }) : null;
 
   function fontOf() {
     const f = EN.pickFont(CFG.fontKey), s = f.scale;
-    return { css: f.css + ',Sarabun,sans-serif', s: s, body: CFG.sizesPt.body * s, label: CFG.sizesPt.label * s, title: CFG.sizesPt.title * s, line: CFG.sizesPt.body * s * PT * 1.2 };
+    const F = { css: f.css + ',Sarabun,sans-serif', s: s, body: CFG.sizesPt.body * s, label: CFG.sizesPt.label * s, title: CFG.sizesPt.title * s };
+    const c = document.createElement('canvas').getContext('2d');
+    F.line = F.body * PT * 1.3;    // ระยะบรรทัดปกติ (Single) ของแบบอักษรสารบรรณโดยประมาณ
+    F.row = F.label * PT * 1.25;   // แถว "ที่" และ "เรื่อง"
+    // ตำแหน่งอ้างอิงจากคำว่า "บันทึกข้อความ" ที่จัดกึ่งกลาง: "วันที่" ตรงตัว ข · ชื่อเดือนเริ่มหลังตัว ม
+    const w = function (t, font) { c.font = font; return c.measureText(t).width / PX; };
+    const tf = '700 ' + F.title + 'pt ' + F.css, lf = '700 ' + F.label + 'pt ' + F.css;
+    const left = TEXT_CENTER - w('บันทึกข้อความ', tf) / 2;
+    F.xKho = left + w('บันทึก', tf);
+    F.xMonth = left + w('บันทึกข้อความ', tf);
+    F.lbl = { org: w('ส่วนราชการ', lf), no: w('ที่', lf), date: w('วันที่', lf), subj: w('เรื่อง', lf) };
+    c.font = F.body + 'pt ' + F.css;
+    F.textW = function (t) { return c.measureText(t).width / PX; };
+    return F;
   }
   function styleOf(F) {
     return '.ob-sheet{position:relative;width:210mm;height:297mm;background:#fff;color:#000;overflow:hidden;font-family:' + F.css + ';font-size:' + F.body.toFixed(2) + 'pt;page-break-after:always;break-after:page}' +
@@ -44,18 +58,20 @@
       '.land .ob-in{left:15mm;top:15mm;width:267mm;height:180mm}' +
       '.ob-l{height:' + F.line.toFixed(2) + 'mm;line-height:' + F.line.toFixed(2) + 'mm;white-space:nowrap}' +
       '.ob-l.j{white-space:normal;text-align:justify;text-align-last:justify;text-justify:inter-character;overflow:hidden}' +
-      '.ob-head{position:relative;height:17mm}.ob-head img{position:absolute;left:0;top:0;height:15mm;width:auto}' +
-      '.ob-title{position:absolute;left:0;right:0;bottom:1mm;text-align:center;font-weight:700;font-size:' + F.title.toFixed(2) + 'pt;line-height:1}' +
-      '.ob-row{position:relative;height:8mm;line-height:8mm;white-space:nowrap}.ob-row b{font-size:' + F.label.toFixed(2) + 'pt}' +
+      '.ob-head{position:relative;height:' + GARUDA + 'mm}.ob-head img{position:absolute;left:0;top:0;height:' + GARUDA + 'mm;width:auto}' +
+      '.ob-title{position:absolute;left:0;right:0;bottom:0;text-align:center;font-weight:700;font-size:' + F.title.toFixed(2) + 'pt;line-height:35pt}' +
+      '.ob-row{position:relative;white-space:nowrap}.ob-row b{font-size:' + F.label.toFixed(2) + 'pt;position:absolute;left:0;bottom:0;line-height:1.25}' +
+      '.ob-v{position:absolute;bottom:0;white-space:nowrap;overflow:hidden;border-bottom:.25mm dotted #000;line-height:' + F.row.toFixed(2) + 'mm;box-sizing:border-box}' +
+      '.ob-to{position:relative;white-space:nowrap}' +
       '.ob-pn{text-align:center;height:8mm;line-height:8mm}' +
-      '.ob-sig{position:relative;margin-left:80mm;width:80mm;text-align:center;padding-top:15mm}' +
-      '.ob-sig div{height:' + F.line.toFixed(2) + 'mm;line-height:' + F.line.toFixed(2) + 'mm}' +
-      '.ob-att-t{text-align:center;font-weight:700;font-size:' + F.label.toFixed(2) + 'pt;line-height:9mm;height:9mm;white-space:nowrap;overflow:hidden}' +
-      '.ob-att-s{text-align:center;line-height:7mm;height:7mm;white-space:nowrap;overflow:hidden}' +
-      '.ob-imgs{position:absolute;left:0;right:0;top:17mm;bottom:33mm;display:flex;flex-direction:column;gap:3mm}' +
+      '.ob-sig{position:relative;text-align:center;padding-top:' + (F.line * 3).toFixed(2) + 'mm}' +
+      '.ob-sig div{height:' + F.line.toFixed(2) + 'mm;line-height:' + F.line.toFixed(2) + 'mm;white-space:nowrap}' +
+      '.ob-att-t{text-align:center;font-weight:700;font-size:' + F.label.toFixed(2) + 'pt;line-height:10mm;height:10mm;white-space:nowrap;overflow:hidden}' +
+      '.ob-att-s{text-align:center;line-height:' + F.line.toFixed(2) + 'mm;height:' + F.line.toFixed(2) + 'mm;white-space:nowrap;overflow:hidden}' +
+      '.ob-imgs{position:absolute;left:0;right:0;top:' + (12 + F.line).toFixed(2) + 'mm;bottom:' + (F.line * 5 + 3).toFixed(2) + 'mm;display:flex;flex-direction:column;gap:3mm}' +
       '.ob-imgs div{flex:1;min-height:0;display:flex;align-items:center;justify-content:center}.ob-imgs img{max-width:100%;max-height:100%;object-fit:contain}' +
       '.ob-att-sig{position:absolute;right:0;bottom:0;width:70mm;text-align:center}.ob-att-sig div{height:' + F.line.toFixed(2) + 'mm;line-height:' + F.line.toFixed(2) + 'mm}' +
-      '.ob-att-sig .pen{height:' + (33 - 2 * F.line - 1).toFixed(2) + 'mm}';
+      '.ob-att-sig .pen{height:' + (F.line * 3).toFixed(2) + 'mm}';
   }
 
   // ตัดบรรทัดตามที่เบราว์เซอร์วัดจริง (ตัดระหว่างคำไทย) — คืนข้อความแต่ละบรรทัด
@@ -80,16 +96,24 @@
   function memoSheets(r, F) {
     const d = function (s) { return r.thaiDigits === false ? String(s || '') : U.toThaiDigits(s || ''); };
     const now = U.parseIso(U.today());
-    const dateTxt = r.docDate ? d(U.thDate(r.docDate)) : '         ' + d(U.MONTHS[now.getMonth()] + ' ' + (now.getFullYear() + 543));
-    const lineH = F.line;
-    const subj = splitLines(d(r.subject || ''), F, BODY_W - 14, 0);
+    const dd = U.parseIso(r.docDate);
+    const dayTxt = dd ? d(String(dd.getDate())) : '';
+    const monthTxt = d(U.MONTHS[(dd || now).getMonth()] + ' ' + ((dd || now).getFullYear() + 543));
+    const lineH = F.line, GAP = 1.5;
+    // ค่าที่อยู่หลังหัวข้อ มีจุดไข่ปลาตลอดช่อง ตามแบบบันทึกข้อความ
+    const val = function (x, w, html, extra) { return '<span class="ob-v" style="left:' + x.toFixed(2) + 'mm;width:' + w.toFixed(2) + 'mm;' + (extra || '') + '">' + html + '</span>'; };
+    const xOrg = F.lbl.org + GAP, xNo = F.lbl.no + GAP, xDate = F.xKho + F.lbl.date + GAP, xSubj = F.lbl.subj + GAP;
+    const subj = splitLines(d(r.subject || ''), F, BODY_W - xSubj, 0);
     let head = '<div class="ob-head"><img src="' + esc(CFG.garuda) + '" alt=""><div class="ob-title">บันทึกข้อความ</div></div>' +
-      '<div class="ob-row"><b>ส่วนราชการ</b>&nbsp;&nbsp;' + esc(d(CFG.org)) + ' โทรศัพท์ ' + esc(d(CFG.phone)) + '</div>' +
-      '<div class="ob-row"><b>ที่</b>&nbsp;&nbsp;' + esc(d(fullNo(r))) + '<span style="position:absolute;left:88mm"><b>วันที่</b>&nbsp;&nbsp;' + esc(dateTxt) + '</span></div>' +
-      '<div class="ob-row"><b>เรื่อง</b><span style="position:absolute;left:14mm">' + esc(subj[0] || '') + '</span></div>';
-    subj.slice(1).forEach(function (x) { head += '<div class="ob-l" style="padding-left:14mm">' + esc(x) + '</div>'; });
-    head += '<div class="ob-row">เรียน&nbsp;&nbsp;' + esc(d(r.to)) + (r.via ? '&nbsp;&nbsp;&nbsp;&nbsp;ผ่าน ' + esc(d(r.via)) : '') + '</div>';
-    const headH = 17 + 8 * 4 + lineH * Math.max(0, subj.length - 1);
+      '<div class="ob-row" style="height:' + R_ORG.toFixed(2) + 'mm"><b>ส่วนราชการ</b>' + val(xOrg, BODY_W - xOrg, esc(d(CFG.org)) + ' โทรศัพท์ ' + esc(d(CFG.phone))) + '</div>' +
+      '<div class="ob-row" style="height:' + F.row.toFixed(2) + 'mm"><b>ที่</b>' + val(xNo, F.xKho - xNo - GAP, esc(d(fullNo(r)))) +
+      '<b style="left:' + F.xKho.toFixed(2) + 'mm">วันที่</b>' + val(xDate, BODY_W - xDate, '') +
+      '<span class="ob-v" style="left:' + xDate.toFixed(2) + 'mm;width:' + Math.max(0, F.xMonth - xDate).toFixed(2) + 'mm;text-align:center;border:0">' + esc(dayTxt) + '</span>' +
+      '<span class="ob-v" style="left:' + F.xMonth.toFixed(2) + 'mm;border:0">' + esc(monthTxt) + '</span></div>' +
+      '<div class="ob-row" style="height:' + F.row.toFixed(2) + 'mm"><b>เรื่อง</b>' + val(xSubj, BODY_W - xSubj, esc(subj[0] || '')) + '</div>';
+    subj.slice(1).forEach(function (x) { head += '<div class="ob-row" style="height:' + lineH.toFixed(2) + 'mm">' + val(xSubj, BODY_W - xSubj, esc(x)) + '</div>'; });
+    head += '<div class="ob-l ob-to" style="margin-top:' + BEFORE.toFixed(2) + 'mm">เรียน<span style="position:absolute;left:' + xSubj.toFixed(2) + 'mm">' + esc(d(r.to)) + (r.via ? '&nbsp;&nbsp;&nbsp;&nbsp;ผ่าน ' + esc(d(r.via)) : '') + '</span></div>';
+    const headH = GARUDA + R_ORG + F.row * 2 + lineH * Math.max(0, subj.length - 1) + BEFORE + lineH;
 
     const blocks = [];
     String(r.body || '').replace(/\r/g, '').split('\n').forEach(function (raw) {
@@ -98,12 +122,16 @@
       const ls = splitLines(t, F, BODY_W, IND);
       ls.forEach(function (x, i) {
         const last = i === ls.length - 1;
-        blocks.push({ h: lineH + (i === 0 ? BEFORE : 0), html: '<div class="ob-l' + (last ? '' : ' j') + '" style="' + (i === 0 ? 'margin-top:' + BEFORE + 'mm;padding-left:' + IND + 'mm;' : '') + '">' + esc(x) + '</div>' });
+        blocks.push({ h: lineH + (i === 0 ? BEFORE : 0), html: '<div class="ob-l' + (last ? '' : ' j') + '" style="' + (i === 0 ? 'margin-top:' + BEFORE.toFixed(2) + 'mm;padding-left:' + IND + 'mm;' : '') + '">' + esc(x) + '</div>' });
       });
     });
-    const sign = '<div class="ob-l" style="margin-top:' + BEFORE + 'mm;padding-left:' + IND + 'mm">' + esc(d(r.closing || '')) + '</div>' +
-      '<div class="ob-sig"><div>(' + esc(d(r.signerName || '')) + ')</div><div>' + esc(d(r.signerPos || '')) + '</div></div>';
-    const signH = BEFORE + lineH + 15 + lineH * 2;
+    // ชื่อเริ่มที่แนวกึ่งกลาง เว้น 3 บรรทัดจากข้อความ · ชื่อกับตำแหน่งอยู่กึ่งกลางซึ่งกันและกัน
+    const nameTxt = '(' + d(r.signerName || '') + ')', posTxt = d(r.signerPos || '');
+    const sigW = Math.max(F.textW(nameTxt), F.textW(posTxt)) + 1;
+    const sigX = Math.max(0, Math.min(TEXT_CENTER, BODY_W - sigW));
+    const sign = '<div class="ob-l" style="margin-top:' + BEFORE.toFixed(2) + 'mm;padding-left:' + IND + 'mm">' + esc(d(r.closing || '')) + '</div>' +
+      '<div class="ob-sig" style="margin-left:' + sigX.toFixed(2) + 'mm;width:' + sigW.toFixed(2) + 'mm"><div>' + esc(nameTxt) + '</div><div>' + esc(posTxt) + '</div></div>';
+    const signH = BEFORE + lineH + lineH * 3 + lineH * 2;
 
     const pages = [[head]];
     let used = headH;

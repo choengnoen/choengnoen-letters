@@ -238,7 +238,7 @@
     S.view = v;
     $('tabs').querySelectorAll('.tab-btn').forEach(function (b) { b.classList.toggle('active', b.dataset.view === v); });
     document.querySelectorAll('.view').forEach(function (s) { s.classList.toggle('active', s.id === 'view-' + v); });
-    $('main').classList.toggle('wide', v === 'letter' || v === 'out');
+    $('main').classList.toggle('wide', v === 'letter');
     if (!noHist) try { history.replaceState(null, '', '#' + v); } catch (e) { /* ข้าม */ }
     A.render();
     window.scrollTo(0, 0);
