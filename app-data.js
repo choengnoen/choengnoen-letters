@@ -28,8 +28,8 @@ window.LTR_DATA = {
   },
   // ชื่อบุคคลเว้นว่างไว้ — กรอกที่แท็บ "บุคลากร/ตำแหน่ง"
   PEOPLE: [
-    { id: 'p-dir',   role: 'director', prefix: '', name: '', position: 'ผู้อำนวยการแขวงทางหลวงระยอง', abbr: 'ผขท.ระยอง', reportsTo: '',      active: true },
-    { id: 'p-head',  role: 'head',     prefix: '', name: '', position: 'หัวหน้าหมวดทางหลวงเชิงเนิน',  abbr: 'หน.หมวดฯ เชิงเนิน', reportsTo: 'p-dir',  active: true },
+    { id: 'p-dir',   role: 'director', prefix: '', name: '', position: 'ผู้อำนวยการแขวงทางหลวงระยอง', abbr: 'ผอ.ขท.ระยอง', reportsTo: '',      active: true },
+    { id: 'p-head',  role: 'head',     prefix: 'นาย', name: 'อิศรินทร์  อรุณสวัสดิ์', position: 'หัวหน้าหมวดทางหลวงเชิงเนิน',  abbr: 'ชม.ขท.เชิงเนิน', reportsTo: 'p-dir',  active: true },
     { id: 'p-staff', role: 'staff',    prefix: '', name: '', position: 'นายช่างโยธา',                 abbr: '',          reportsTo: 'p-head', active: true },
     { id: 'p-clerk', role: 'clerk',    prefix: '', name: '', position: 'เจ้าหน้าที่ธุรการ',            abbr: '',          reportsTo: 'p-head', active: true }
   ],
@@ -80,6 +80,21 @@ window.LTR_DATA = {
     filed:    { name: 'เก็บเข้าแฟ้ม',   cls: 'b-mute' }
   },
   URGENCY: ['ปกติ', 'ด่วน', 'ด่วนมาก', 'ด่วนที่สุด'],
+  // ชนิดของวันกำหนด — ใช้ในข้อความติดตามทาง LINE เช่น "ครบกำหนดตอบในอีก 3 วัน" (ไม่เลือก = ส่ง)
+  DUE_KINDS: ['ส่ง', 'ตอบ', 'รายงาน'],
+  // ค่าเริ่มต้นของบันทึกข้อความ (ยึดจากแบบที่หมวดใช้จริง) — แก้ค่าที่นี่ที่เดียว
+  OUT_DEFAULTS: {
+    garuda: 'garuda.png',
+    org: 'หมวดทางหลวงเชิงเนิน แขวงทางหลวงระยอง',
+    phone: '๐ ๓๘๖๑ ๑๒๐๔',
+    docPrefix: 'สทล.๑๔ ขท.ระยอง.๓/๔/',
+    to: 'ผอ.ขท.ระยอง',
+    via: ['รอ.ขท.ระยอง(ป.)', 'รอ.ขท.ระยอง(ว)'],
+    signerId: 'p-head',
+    fontKey: 'TH SarabunIT๙',
+    marginsMm: { top: 20, bottom: 22.5, left: 30, right: 20 },
+    sizesPt: { title: 28, label: 18, body: 16 }
+  },
   // แบบอักษร: เครื่องที่ติดตั้ง TH SarabunIT๙ / TH SarabunPSK จะใช้ตัวนั้น (ขนาด 16 pt ตามระเบียบ)
   // ถ้าไม่มี ใช้ Sarabun จาก Google Fonts ซึ่งตัวใหญ่กว่า จึงย่อขนาดให้อัตโนมัติ (×0.72)
   FONTS: [

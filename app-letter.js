@@ -229,7 +229,9 @@
       '<div class="field"><label>ความเร่งด่วน</label><select data-k="urgency">' + A.opts(D.URGENCY, r.urgency || 'ปกติ') + '</select></div>' +
       '<div class="field"><label>ชั้นความลับ</label><select data-k="secrecy">' + A.opts(['ลับ', 'ลับมาก', 'ลับที่สุด'], r.secrecy, 'ไม่มี') + '</select></div>' +
       '<div class="field"><label>ประเภทหนังสือ</label><select data-k="type">' + A.opts(typeOpts, r.type || 'other') + '</select></div>' +
-      '<div class="field"><label>กำหนดส่ง / ต้องเสร็จภายใน</label><input type="date" data-k="dueDate" value="' + esc(r.dueDate) + '"></div>' +
+      '<div class="field"><label>วันกำหนด / ต้องเสร็จภายใน</label><input type="date" data-k="dueDate" value="' + esc(r.dueDate) + '"></div>' +
+      '<div class="field"><label>กำหนดนี้คือการ</label><select data-k="dueKind">' + A.opts(D.DUE_KINDS, r.dueKind || D.DUE_KINDS[0]) + '</select></div>' +
+      (!r.dueDate && A.isOpen(r) ? '<div class="field span-all"><span class="hint" style="color:var(--warn)">ยังไม่ได้ใส่วันกำหนด — ระบบจะไม่เตือนฉบับนี้ทาง LINE</span></div>' : '') +
       '<div class="field span-all"><label>ผู้รับผิดชอบ</label><select data-k="assigneeId">' + A.opts(ppl, r.assigneeId, '— ยังไม่มอบหมาย —') + '</select></div>' +
       '<div class="field span-all"><label>สรุปเรื่อง</label><textarea data-k="summary" rows="4">' + esc(r.summary) + '</textarea></div>' +
       '<div class="field span-all"><label>สิ่งที่ขอให้ดำเนินการ (ใช้เติม {สรุป} ในเกษียณ — เขียนต่อจากคำว่า "ขอให้")</label><input data-k="request" value="' + esc(r.request) + '"></div>' +

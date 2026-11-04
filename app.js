@@ -204,16 +204,32 @@
       FBL.watch('settings', function (docs) { S.settings = docs.find(function (d) { return d.id === 'app'; }) || null; updateWho(); A.scheduleRender(); })
     ]);
     S.letters = letters; S.settings = settings.find(function (d) { return d.id === 'app'; }) || null;
+    await migratePeople();
     updateWho();
     hideLoading();
     A.go((location.hash || '').replace('#', '') || 'dash', true);
+  }
+  // ปรับตัวย่อตำแหน่งเดิมในฐานข้อมูลให้ตรงกับหนังสือจริง และเติมชื่อหัวหน้าหมวดถ้ายังว่าง — ไม่ทับค่าที่ผู้ใช้กรอกเอง
+  async function migratePeople() {
+    if (!S.settings || !A.can()) return;
+    const st = JSON.parse(JSON.stringify(S.settings));
+    const dflt = {};
+    D.PEOPLE.forEach(function (p) { dflt[p.id] = p; });
+    const OLD_ABBR = { 'p-dir': 'ผขท.ระยอง', 'p-head': 'หน.หมวดฯ เชิงเนิน' };
+    let changed = false;
+    (st.people || []).forEach(function (p) {
+      if (OLD_ABBR[p.id] && p.abbr === OLD_ABBR[p.id]) { p.abbr = dflt[p.id].abbr; changed = true; }
+      if (p.id === 'p-head' && !p.name) { p.prefix = dflt[p.id].prefix; p.name = dflt[p.id].name; changed = true; }
+    });
+    if (!changed) return;
+    try { await A.saveSettings(st, 'ปรับตัวย่อตำแหน่งและชื่อหัวหน้าหมวด'); } catch (e) { console.error(e); }
   }
   function updateWho() {
     const me = A.me();
     $('whoDisplay').textContent = 'ผู้ใช้: ' + FBL.user.name + A.roleTag(FBL.user) + (me ? ' · ' + me.position : '');
   }
 
-  const VIEWS = ['dash', 'list', 'letter', 'tpl', 'people', 'printer', 'ai', 'guide', 'settings'];
+  const VIEWS = ['dash', 'list', 'letter', 'out', 'tpl', 'people', 'printer', 'ai', 'guide', 'settings'];
   A.go = function (v, noHist) {
     if (VIEWS.indexOf(v) < 0) v = 'dash';
     if (v === 'letter' && !S.openId) v = 'list';
@@ -331,19 +347,35 @@
   function kpi(lb, n, unit) { return '<div class="kpi"><div class="lb">' + lb + '</div><div class="big">' + n + ' <small class="sm">' + unit + '</small></div></div>'; }
   function letterTable(rows, compact) {
     return '<div class="table-wrap"><table class="data"><thead><tr><th>เลขรับ</th>' + (compact ? '' : '<th>วันที่รับ</th><th>ที่ / ลงวันที่</th><th>จาก</th>') +
-      '<th>เรื่อง</th><th>กำหนดส่ง</th>' + (compact ? '' : '<th>ผู้รับผิดชอบ</th>') + '<th>สถานะ</th></tr></thead><tbody>' +
+      '<th>เรื่อง</th><th>กำหนด</th>' + (compact ? '' : '<th>ผู้รับผิดชอบ</th>') + '<th>สถานะ</th>' + (compact ? '' : '<th></th>') + '</tr></thead><tbody>' +
       rows.map(function (l) {
         const due = A.dueInfo(l);
         const asg = A.person(l.assigneeId);
         return '<tr class="clickable" data-open="' + esc(l.id) + '"><td class="nowrap">' + esc(l.regNo || '') + '</td>' +
           (compact ? '' : '<td class="nowrap">' + esc(U.thDate(l.receivedDate, 'short')) + '</td><td class="small">' + esc(l.docNo || '') + '<br><span class="muted">' + esc(U.thDate(l.docDate, 'short')) + '</span></td><td class="small">' + esc(l.from || '') + '</td>') +
           '<td>' + A.urgBadge(l.urgency) + ' ' + esc(l.subject || '(ยังไม่ได้อ่านเรื่อง)') + ((l.links || []).length ? ' <span class="badge b-info" title="มี QR/ลิงก์">🔗 ' + l.links.length + '</span>' : '') + '</td>' +
-          '<td class="nowrap">' + (due ? '<span class="badge ' + due.cls + '">' + esc(due.text) + '</span>' : (l.dueDate ? '<span class="muted small">' + esc(U.thDate(l.dueDate, 'short')) + '</span>' : '')) + '</td>' +
+          '<td class="nowrap">' + (due ? '<span class="badge ' + due.cls + '">' + (l.dueKind ? esc(l.dueKind) + ' · ' : '') + esc(due.text) + '</span>' : (l.dueDate ? '<span class="muted small">' + esc(U.thDate(l.dueDate, 'short')) + '</span>' : (!compact && A.isOpen(l) ? '<span class="badge b-mute" title="ไม่มีวันกำหนด ระบบจะไม่เตือนทาง LINE">ไม่มีกำหนด</span>' : ''))) + '</td>' +
           (compact ? '' : '<td class="small">' + esc(asg ? A.fullName(asg) || asg.position : '') + '</td>') +
-          '<td>' + A.statusBadge(l.status) + '</td></tr>';
+          '<td>' + A.statusBadge(l.status) + '</td>' +
+          (compact ? '' : '<td class="nowrap">' + (A.isOpen(l) ? '<button class="btn btn-sm btn-outline" data-done="' + esc(l.id) + '">เสร็จแล้ว</button>' : '') + '</td>') + '</tr>';
       }).join('') + '</tbody></table></div>';
   }
+  // ปิดเรื่อง: เปลี่ยนสถานะเป็น "ดำเนินการแล้ว" (การเตือนทาง LINE จะหยุดตั้งแต่รอบถัดไป)
+  async function markDone(id, btn) {
+    const l = A.letter(id);
+    if (!l) return;
+    if (!(await A.confirm('ปิดเรื่อง "' + (l.subject || l.regNo || '') + '" เป็นดำเนินการแล้ว?\nการเตือนทาง LINE จะหยุดตั้งแต่รอบถัดไป', 'เสร็จแล้ว'))) return;
+    const rec = JSON.parse(JSON.stringify(l));
+    rec.status = 'done';
+    (rec.history = rec.history || []).push({ at: new Date().toISOString(), by: FBL.user.name, what: 'เปลี่ยนสถานะเป็น "' + D.STATUS.done.name + '"' });
+    const done = A.busy(btn);
+    try { await A.saveLetter(rec, 'ปิดเรื่อง ' + (rec.regNo || '')); A.toast('ปิดเรื่องแล้ว'); } catch (e) { done(); A.toast(e.message, true); }
+  }
   function bindCommon(el) {
+    el.querySelectorAll('[data-done]').forEach(function (b) {
+      b.onclick = function (e) { e.stopPropagation(); markDone(b.dataset.done, b); };
+      b.ondblclick = function (e) { e.stopPropagation(); };
+    });
     el.querySelectorAll('[data-open]').forEach(function (b) {
       const openIt = function (e) {
         e.stopPropagation();
@@ -354,6 +386,11 @@
     });
     el.querySelectorAll('[data-go]').forEach(function (b) { b.onclick = function () { A.go(b.dataset.go); }; });
   }
+
+  /* ======================= หนังสือส่ง (ฟอร์มและทะเบียนส่งจะเพิ่มในเฟสถัดไป) ======================= */
+  A.views.out = function (el) {
+    el.innerHTML = '<div class="card"><div class="section-title">หนังสือส่ง</div><div class="empty">ส่วนร่างบันทึกข้อความและทะเบียนส่งกำลังจัดทำ</div></div>';
+  };
 
   /* ======================= ทะเบียนหนังสือรับ ======================= */
   A.views.list = function (el) {
@@ -408,7 +445,7 @@
           }).join('') + '</div>';
       }).join('') + '</div>' +
       '<div class="card guide"><div class="section-title">หลักการเขียนเกษียณหนังสือ (ย่อ)</div><ul>' +
-      '<li><b>เกษียณเสนอ</b> ขึ้นต้น "เรียน" ตามด้วยตำแหน่งผู้บังคับบัญชา (ใช้ชื่อย่อตำแหน่งได้ เช่น ผขท.ระยอง) แล้วสรุปเรื่องสั้น ๆ + สิ่งที่ขอให้พิจารณา</li>' +
+      '<li><b>เกษียณเสนอ</b> ขึ้นต้น "เรียน" ตามด้วยตำแหน่งผู้บังคับบัญชา (ใช้ชื่อย่อตำแหน่งได้ เช่น ผอ.ขท.ระยอง) แล้วสรุปเรื่องสั้น ๆ + สิ่งที่ขอให้พิจารณา</li>' +
       '<li><b>เกษียณสั่งการ</b> สั้น ชัด ระบุผู้รับมอบ และกำหนดเวลา เช่น "ทราบ มอบ นายช่าง ... ดำเนินการ และรายงานภายในวันที่ ..."</li>' +
       '<li><b>เกษียณรายงานผล</b> บอกว่าดำเนินการอย่างไร เมื่อไร อ้างเลขหนังสือตอบถ้ามี</li>' +
       '<li>ทุกเกษียณต้องมี ลายมือชื่อ · (ชื่อเต็ม) · ตำแหน่ง · วัน เดือน ปี — ระบบเว้นที่ให้เซ็นชื่อด้วยปากกาหลังพิมพ์</li>' +
