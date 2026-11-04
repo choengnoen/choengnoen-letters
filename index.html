@@ -12,7 +12,7 @@
 <!-- ฐานข้อมูลกลาง CN-Hub — ใช้ตรากรมทางหลวงจากไฟล์กลาง (โหลดไม่ได้ก็ใช้ logo.png ของระบบนี้ต่อ) -->
 <script src="https://choengnoen.github.io/choengnoen-Hub/master-client.js"></script>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Kanit:wght@400;500;600&family=Sarabun:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Kanit:wght@400;500;600;700&family=Sarabun:wght@400;500;600;700&display=swap');
 
 /* โทนสีเดียวกับระบบผู้ควบคุมงานโครงการ: น้ำเงินกรมท่า (navy) + ทอง (gold #FAC02E) */
 :root{
@@ -44,27 +44,27 @@ button{font-family:inherit}
 .shell.wide{max-width:1500px}
 
 /* ---------- ส่วนหัว ---------- */
-.app-header{background:linear-gradient(115deg,#0d2c4d 0%,#0a2540 45%,#071b30 100%);color:#fff;padding:12px 20px 0}
-.app-header .top-row{display:flex;align-items:center;justify-content:space-between;gap:12px;max-width:calc(var(--wrap) - 40px);margin:0 auto}
-.brand-block{display:flex;align-items:center;gap:12px;min-width:0}
-.dept-logo{width:42px;height:42px;flex:none}
-.app-header h1{font-size:18.5px;line-height:1.25;margin:0;color:#fff;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.app-header .sub{font-size:12.5px;color:rgba(255,255,255,.62);margin:0;line-height:1.35}
-.head-right{display:flex;align-items:center;gap:10px;flex:none;min-width:0}
-.app-header .who{font-size:13px;color:rgba(255,255,255,.72);margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:320px}
-.app-header #btnLogout{background:transparent;border:1px solid rgba(255,255,255,.22);color:rgba(255,255,255,.82);padding:3px 10px}
-.app-header #btnLogout:hover{color:#fff;background:rgba(255,255,255,.1)}
-.tabs-row{display:flex;align-items:center;gap:12px;max-width:calc(var(--wrap) - 40px);margin:6px auto 0}
-.tabs-row .tabs{flex:1;min-width:0}
-.header-actions{flex:none;display:flex;gap:8px;align-items:center;padding-bottom:6px}
-.demo-badge{display:inline-block;background:var(--gold);color:#3d2e00;font-family:'Kanit',sans-serif;font-weight:500;font-size:11px;border-radius:99px;padding:0 9px;line-height:1.6}
-.tabs{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none}
-.tabs::-webkit-scrollbar{display:none}
-.tab-btn{font-family:'Kanit',sans-serif;font-weight:400;font-size:14px;background:transparent;border:none;color:rgba(255,255,255,.7);padding:9px 13px 10px;cursor:pointer;white-space:nowrap;border-bottom:3px solid transparent;transition:color .15s,background .15s;border-radius:6px 6px 0 0}
-.tab-btn:hover{color:#fff;background:rgba(255,255,255,.06)}
-.tab-btn.active{color:#fff;font-weight:500;border-bottom-color:var(--gold)}
-.tab-btn .cnt{display:inline-block;background:#e0533f;color:#fff;border-radius:99px;font-size:11px;font-weight:500;min-width:18px;padding:0 5px;margin-left:6px;line-height:18px;text-align:center}
-#btnNewLetter{background:var(--gold);color:#3a2a00;border:1px solid var(--gold);font-weight:500;padding:5px 12px}
+.app-header{background:radial-gradient(1100px 420px at 12% -20%, var(--brand-800) 0%, #071b30 55%);color:var(--paper);padding:20px 22px 0;position:relative;border-bottom:1px solid rgba(0,0,0,.35)}
+.app-header .top-row{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;max-width:calc(var(--wrap) - 40px);margin:0 auto}
+.app-header h1{font-size:21px;font-weight:700;margin:0 0 3px;color:#fff;letter-spacing:-.01em}
+.brand-block{display:flex;align-items:flex-start;align-self:flex-start;gap:14px}
+.dept-logo{width:50px;height:50px;flex:none;margin-top:3px}
+.app-header .sub{font-size:13px;color:#9DA0A8;margin:0}
+.head-right{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+.app-header .who{font-size:12px;color:#787B84;margin:0;text-align:right}
+.app-header #btnLogout{background:transparent;border:none;color:#9DA0A8;font-weight:600;font-size:12.5px;padding:4px 10px}
+.app-header #btnLogout:hover{color:#fff;background:transparent}
+.tabs-row{display:flex;align-items:center;gap:10px;max-width:calc(var(--wrap) - 40px);margin:12px auto 0;border-top:1px solid rgba(255,255,255,.08)}
+.tabs-row .tabs{flex:1;min-width:0;margin:0;border-top:none}
+.header-actions{flex:none;display:flex;gap:8px;align-items:center}
+@media(max-width:900px){.tabs-row{flex-direction:column-reverse;align-items:stretch}.header-actions{justify-content:flex-end;padding:8px 0 2px}}
+.demo-badge{display:inline-block;background:var(--gold);color:#3d2e00;font-family:'Kanit',sans-serif;font-weight:600;font-size:11.5px;border-radius:99px;padding:1px 10px;margin-left:6px;vertical-align:2px}
+.tabs{display:flex;gap:0;overflow-x:auto;scrollbar-width:thin}
+.tab-btn{font-family:'Kanit',sans-serif;font-weight:600;font-size:12.5px;background:transparent;border:none;color:#84878F;padding:9px 13px;cursor:pointer;white-space:nowrap;border-bottom:2px solid transparent;letter-spacing:.01em;transition:color .15s}
+.tab-btn:hover{color:#DEDFE2}
+.tab-btn.active{color:#fff;border-bottom-color:var(--gold)}
+.tab-btn .cnt{background:var(--bad);color:#fff;border-radius:99px;font-size:10.5px;padding:0 6px;margin-left:4px;vertical-align:1px}
+#btnNewLetter{background:var(--gold);color:#3a2a00;border-color:var(--gold);font-weight:600;font-size:12.5px;padding:4px 10px}
 #btnNewLetter:hover{background:#ffcc4d}
 
 /* หัวหน้าแท็บ */
@@ -153,7 +153,6 @@ button{font-family:inherit}
 /* ---------- ตาราง ---------- */
 .table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:#fff}
 table.data{width:100%;border-collapse:collapse;font-size:14px}
-table.data.wide{min-width:980px}
 table.data th{background:#f8fafc;color:var(--ink-soft);font-weight:600;font-size:12.5px;text-align:left;padding:8px 12px;border-bottom:1px solid var(--line);white-space:nowrap}
 table.data td{padding:10px 12px;border-bottom:1px solid var(--line-2);vertical-align:middle}
 table.data tr:last-child td{border-bottom:none}
@@ -164,6 +163,16 @@ table.data td.r{text-align:right}
 table.data td.strong{font-weight:600;color:var(--brand-900)}
 table.data td.subj{color:var(--ink);font-weight:500;min-width:220px;line-height:1.45}
 table.data td.small{line-height:1.4}
+/* ตารางทะเบียนหนังสือรับ / ส่ง: คงรูปแบบเดิม */
+.reg-filter{padding:0;border-bottom:0;margin-bottom:12px}
+table.data.reg-table th{background:#e6eef6;color:var(--brand-900);font-weight:700;padding:8px 10px;border-bottom:1px solid #dde2e8}
+table.data.reg-table td{padding:8px 10px;border-bottom:1px solid #e6eef6;vertical-align:top}
+table.data.reg-table tr:last-child td{border-bottom:none}
+table.data.reg-table tr.clickable:hover td{background:#e6eef6}
+.reg-table .small{font-size:12.5px}
+.reg-table .badge{display:inline-block;font-size:12px;line-height:inherit;padding:1px 9px}
+.reg-table .b-ok{color:#1c8a53}.reg-table .b-warn{color:#b8650a}.reg-table .b-bad{color:#c1402f}.reg-table .b-mute{background:#e6eef6}
+.reg-table .btn-sm{font-weight:600;font-size:12.5px;padding:4px 10px;border-color:#dde2e8}
 .empty{padding:30px;text-align:center;color:var(--ink-mute)}
 
 .badge{display:inline-flex;align-items:center;gap:3px;font-size:12.5px;font-weight:600;border-radius:99px;padding:0 9px;line-height:21px;white-space:nowrap}
@@ -361,12 +370,6 @@ pre.out{white-space:pre-wrap;font-family:'Sarabun',sans-serif;background:#fafcfe
 /* ---------- จอแคบ ---------- */
 @media(max-width:760px){
   .shell{padding:0 16px 48px}
-  .app-header{padding:10px 16px 0}
-  .dept-logo{width:36px;height:36px}
-  .app-header .sub,.app-header .who{display:none}
-  .tabs-row{flex-direction:column-reverse;align-items:stretch;gap:2px;margin-top:8px}
-  .header-actions{padding:0}
-  #btnNewLetter{width:100%;justify-content:center}
   .pagehead h2{font-size:20px}
   .filterbar .search{flex-basis:100%}
   .kpi{padding:10px 12px;gap:9px}
@@ -374,7 +377,6 @@ pre.out{white-space:pre-wrap;font-family:'Sarabun',sans-serif;background:#fafcfe
   .kpi .big{font-size:22px}
   .kpi .lb small{display:none}
 }
-@media(max-width:400px){.app-header h1{font-size:15.5px}.brand-block{gap:8px}}
 
 /* ---------- หน้าล็อกอิน ---------- */
 .auth-gate{position:fixed;inset:0;z-index:10000;display:none;align-items:center;justify-content:center;padding:18px;overflow:auto;background:linear-gradient(160deg,#0a2540 0%,#123a5e 55%,#1f5fbf 100%)}
@@ -411,7 +413,7 @@ pre.out{white-space:pre-wrap;font-family:'Sarabun',sans-serif;background:#fafcfe
     </div>
     <div class="head-right">
       <p class="who" id="whoDisplay"></p>
-      <button class="btn btn-sm" id="btnLogout">ออกจากระบบ</button>
+      <button class="btn btn-sm btn-header" id="btnLogout">ออกจากระบบ</button>
     </div>
   </div>
   <div class="tabs-row">
@@ -425,7 +427,7 @@ pre.out{white-space:pre-wrap;font-family:'Sarabun',sans-serif;background:#fafcfe
       <button class="tab-btn" data-view="settings">ตั้งค่า</button>
     </nav>
     <div class="header-actions">
-      <button class="btn btn-sm" id="btnNewLetter">+ รับหนังสือใหม่</button>
+      <button class="btn btn-sm btn-header" id="btnNewLetter">+ รับหนังสือใหม่</button>
     </div>
   </div>
 </header>

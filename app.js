@@ -244,7 +244,7 @@
   }
   function updateWho() {
     const me = A.me();
-    $('whoDisplay').textContent = FBL.user.name + (me ? ' · ' + (me.abbr || me.position) : '');
+    $('whoDisplay').textContent = 'ผู้ใช้: ' + FBL.user.name + A.roleTag(FBL.user) + (me ? ' · ' + me.position : '');
   }
 
   const VIEWS = ['dash', 'list', 'letter', 'out', 'tpl', 'people', 'printer', 'ai', 'guide', 'settings'];
@@ -395,18 +395,20 @@
       '<span class="big num">' + n + '<small>ฉบับ</small></span></span></' + tag + '>';
   }
   function letterTable(rows, compact) {
-    return '<div class="table-wrap"><table class="data' + (compact ? '' : ' wide') + '"><thead><tr><th>เลขรับ</th>' + (compact ? '' : '<th>วันที่รับ</th><th>ที่ / ลงวันที่</th><th>จาก</th>') +
+    return '<div class="table-wrap"><table class="data' + (compact ? '' : ' reg-table') + '"><thead><tr><th>เลขรับ</th>' + (compact ? '' : '<th>วันที่รับ</th><th>ที่ / ลงวันที่</th><th>จาก</th>') +
       '<th>เรื่อง</th><th>กำหนด</th>' + (compact ? '' : '<th>ผู้รับผิดชอบ</th>') + '<th>สถานะ</th>' + (compact ? '' : '<th></th>') + '</tr></thead><tbody>' +
       rows.map(function (l) {
         const due = A.dueInfo(l);
         const asg = A.person(l.assigneeId);
-        return '<tr class="clickable" data-open="' + esc(l.id) + '"><td class="nowrap num strong">' + esc(l.regNo || '') + '</td>' +
-          (compact ? '' : '<td class="nowrap">' + esc(U.thDate(l.receivedDate, 'short')) + '</td><td class="small nowrap">' + esc(l.docNo || '') + '<br><span class="muted">' + esc(U.thDate(l.docDate, 'short')) + '</span></td><td class="small">' + esc(l.from || '') + '</td>') +
-          '<td class="subj">' + A.urgBadge(l.urgency) + ' ' + (l.subject ? esc(l.subject) : '<span class="muted">(ยังไม่ได้อ่านเรื่อง)</span>') + ((l.links || []).length ? ' <span class="badge b-info b-ic" title="มี QR/ลิงก์">' + A.ic('link') + l.links.length + '</span>' : '') + '</td>' +
-          '<td class="nowrap">' + (due ? '<span class="badge ' + due.cls + '">' + (l.dueKind ? esc(l.dueKind) + ' · ' : '') + esc(due.text) + '</span>' : (l.dueDate ? '<span class="muted small">' + esc(U.thDate(l.dueDate, 'short')) + '</span>' : (!compact && A.isOpen(l) ? '<span class="muted small" title="ไม่มีวันกำหนด ระบบจะไม่เตือนทาง LINE">ไม่มีกำหนด</span>' : ''))) + '</td>' +
+        return '<tr class="clickable" data-open="' + esc(l.id) + '"><td class="nowrap' + (compact ? ' num strong' : '') + '">' + esc(l.regNo || '') + '</td>' +
+          (compact ? '' : '<td class="nowrap">' + esc(U.thDate(l.receivedDate, 'short')) + '</td><td class="small">' + esc(l.docNo || '') + '<br><span class="muted">' + esc(U.thDate(l.docDate, 'short')) + '</span></td><td class="small">' + esc(l.from || '') + '</td>') +
+          (compact
+            ? '<td class="subj">' + A.urgBadge(l.urgency) + ' ' + (l.subject ? esc(l.subject) : '<span class="muted">(ยังไม่ได้อ่านเรื่อง)</span>') + ((l.links || []).length ? ' <span class="badge b-info b-ic" title="มี QR/ลิงก์">' + A.ic('link') + l.links.length + '</span>' : '') + '</td>'
+            : '<td>' + A.urgBadge(l.urgency) + ' ' + esc(l.subject || '(ยังไม่ได้อ่านเรื่อง)') + ((l.links || []).length ? ' <span class="badge b-info" title="มี QR/ลิงก์">🔗 ' + l.links.length + '</span>' : '') + '</td>') +
+          '<td class="nowrap">' + (due ? '<span class="badge ' + due.cls + '">' + (l.dueKind ? esc(l.dueKind) + ' · ' : '') + esc(due.text) + '</span>' : (l.dueDate ? '<span class="muted small">' + esc(U.thDate(l.dueDate, 'short')) + '</span>' : (!compact && A.isOpen(l) ? '<span class="badge b-mute" title="ไม่มีวันกำหนด ระบบจะไม่เตือนทาง LINE">ไม่มีกำหนด</span>' : ''))) + '</td>' +
           (compact ? '' : '<td class="small">' + esc(asg ? A.fullName(asg) || asg.position : '') + '</td>') +
-          '<td class="nowrap">' + A.statusBadge(l.status) + '</td>' +
-          (compact ? '' : '<td class="nowrap r">' + (A.isOpen(l) ? '<button class="btn btn-sm btn-outline" data-done="' + esc(l.id) + '">เสร็จแล้ว</button>' : '') + '</td>') + '</tr>';
+          '<td' + (compact ? ' class="nowrap"' : '') + '>' + A.statusBadge(l.status) + '</td>' +
+          (compact ? '' : '<td class="nowrap">' + (A.isOpen(l) ? '<button class="btn btn-sm btn-outline" data-done="' + esc(l.id) + '">เสร็จแล้ว</button>' : '') + '</td>') + '</tr>';
       }).join('') + '</tbody></table></div>';
   }
   // ปิดเรื่อง: เปลี่ยนสถานะเป็น "ดำเนินการแล้ว" (การเตือนทาง LINE จะหยุดตั้งแต่รอบถัดไป)
@@ -456,12 +458,12 @@
     const segs = [['open', 'ค้างดำเนินการ', all.filter(A.isOpen).length], ['soon', 'ใกล้ครบกำหนด', all.filter(isSoon).length], ['late', 'เกินกำหนด', all.filter(isLate).length, 'hot'], ['all', 'ทั้งหมด', all.length]];
     const stKeys = Object.keys(D.STATUS);
     el.innerHTML = A.pageHead('ทะเบียนหนังสือรับ', rows.length + ' ฉบับ', '<button class="btn btn-sm btn-outline" id="lsCsv">ส่งออก CSV</button>') +
-      '<div class="card card-flush"><div class="filterbar"><div class="seg">' + segs.map(function (c) {
+      '<div class="card"><div class="filterbar reg-filter"><div class="seg">' + segs.map(function (c) {
         return '<button class="' + (ui.st === c[0] ? 'on' : '') + '" data-chip="' + c[0] + '">' + c[1] + ' <b class="num' + (c[3] && c[2] ? ' hot' : '') + '">' + c[2] + '</b></button>';
       }).join('') + '</div>' +
       '<select class="inp" id="lsSt"><option value="">ตามสถานะ…</option>' + stKeys.map(function (k) { return '<option value="' + k + '"' + (ui.st === k ? ' selected' : '') + '>' + D.STATUS[k].name + '</option>'; }).join('') + '</select>' +
       '<input class="inp search" id="lsQ" placeholder="ค้นหาเลขรับ ที่ เรื่อง ผู้ส่ง" value="' + esc(ui.q) + '"></div>' +
-      (rows.length ? letterTable(rows, false) + '<div class="cf-foot">ดับเบิลคลิกแถวเพื่อเปิดหนังสือ</div>' : '<div class="empty">ไม่พบหนังสือ</div>') + '</div>';
+      (rows.length ? letterTable(rows, false) + '<p class="hint" style="margin:10px 0 0">ดับเบิลคลิกแถวเพื่อเปิดหนังสือ</p>' : '<div class="empty">ไม่พบหนังสือ</div>') + '</div>';
     bindCommon(el);
     const q = el.querySelector('#lsQ');
     q.oninput = function () { ui.q = q.value; clearTimeout(q._t); q._t = setTimeout(function () { A.render(); const n = $('lsQ'); n.focus(); n.setSelectionRange(n.value.length, n.value.length); }, 300); };

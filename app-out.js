@@ -273,15 +273,15 @@
     const segs = [['all', 'ทั้งหมด', all.length], ['draft', 'ร่าง', all.filter(function (r) { return r.status !== 'issued'; }).length], ['issued', 'ออกแล้ว', all.filter(function (r) { return r.status === 'issued'; }).length]];
     el.innerHTML = A.pageHead('ทะเบียนหนังสือส่ง', rows.length + ' ฉบับ',
         '<button class="btn btn-sm btn-outline" id="olReg">พิมพ์ทะเบียนส่ง</button><button class="btn btn-sm btn-outline" id="olBook">พิมพ์ บ.1-03</button><button class="btn btn-sm btn-primary" id="olNew">+ ร่างบันทึกข้อความ</button>') +
-      '<div class="card card-flush"><div class="filterbar"><div class="seg">' + segs.map(function (c) {
+      '<div class="card"><div class="filterbar reg-filter"><div class="seg">' + segs.map(function (c) {
         return '<button class="' + (ui.st === c[0] ? 'on' : '') + '" data-ost="' + c[0] + '">' + c[1] + ' <b class="num">' + c[2] + '</b></button>';
       }).join('') + '</div><input class="inp search" id="olQ" placeholder="ค้นหาเลขที่ เรื่อง เรียน เนื้อหา" value="' + esc(ui.q) + '"></div>' +
-      (rows.length ? '<div class="table-wrap"><table class="data wide"><thead><tr><th>เลขที่</th><th>ลงวันที่</th><th>เรื่อง</th><th>เรียน</th><th>การปฏิบัติ</th><th>หมายเหตุ</th><th class="c">ใบแยก</th><th>สถานะ</th><th></th></tr></thead><tbody>' +
+      (rows.length ? '<div class="table-wrap"><table class="data reg-table"><thead><tr><th>เลขที่</th><th>ลงวันที่</th><th>เรื่อง</th><th>เรียน</th><th>การปฏิบัติ</th><th>หมายเหตุ</th><th>ใบแยก</th><th>สถานะ</th><th></th></tr></thead><tbody>' +
         rows.map(function (r) {
-          return '<tr class="clickable" data-oopen="' + esc(r.id) + '"><td class="nowrap num strong">' + (r.docSuffix ? esc(r.docSuffix) : '<span class="muted">—</span>') + '</td><td class="nowrap">' + esc(U.thDate(r.docDate, 'short')) + '</td><td class="subj">' + (r.subject ? esc(r.subject) : '<span class="muted">(ยังไม่มีเรื่อง)</span>') + '</td><td class="small">' + esc(r.to || '') + '</td><td class="small">' + esc(r.regAction || '') + '</td><td class="small">' + esc(r.regNote || '') + '</td>' +
-            '<td class="c num">' + ((r.attachments || []).length || '') + '</td><td class="nowrap"><span class="badge ' + (r.status === 'issued' ? 'b-ok' : 'b-info') + '">' + (r.status === 'issued' ? 'ออกแล้ว' : 'ร่าง') + '</span></td>' +
-            '<td class="nowrap r"><button class="btn btn-sm btn-outline" data-ocopy="' + esc(r.id) + '" title="ได้ร่างใหม่ที่ไม่มีเลขที่ วันที่ และรูป">คัดลอก</button></td></tr>';
-        }).join('') + '</tbody></table></div><div class="cf-foot">ดับเบิลคลิกแถวเพื่อเปิด</div>' : '<div class="empty">ไม่พบหนังสือส่ง</div>') + '</div>';
+          return '<tr class="clickable" data-oopen="' + esc(r.id) + '"><td class="nowrap">' + esc(r.docSuffix || '-') + '</td><td class="nowrap">' + esc(U.thDate(r.docDate, 'short')) + '</td><td>' + esc(r.subject || '(ยังไม่มีเรื่อง)') + '</td><td class="small">' + esc(r.to || '') + '</td><td class="small">' + esc(r.regAction || '') + '</td><td class="small">' + esc(r.regNote || '') + '</td>' +
+            '<td class="c">' + ((r.attachments || []).length || '') + '</td><td><span class="badge ' + (r.status === 'issued' ? 'b-ok' : 'b-info') + '">' + (r.status === 'issued' ? 'ออกแล้ว' : 'ร่าง') + '</span></td>' +
+            '<td class="nowrap"><button class="btn btn-sm btn-outline" data-ocopy="' + esc(r.id) + '">คัดลอก</button></td></tr>';
+        }).join('') + '</tbody></table></div><p class="hint" style="margin:10px 0 0">ดับเบิลคลิกแถวเพื่อเปิด · คัดลอกจะได้ร่างใหม่ที่ไม่มีเลขที่ วันที่ และรูป</p>' : '<div class="empty">ไม่พบหนังสือส่ง</div>') + '</div>';
     $('olNew').onclick = newDialog;
     $('olBook').onclick = printBook;
     $('olReg').onclick = printRegister;
