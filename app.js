@@ -243,13 +243,32 @@
     A.render();
     window.scrollTo(0, 0);
   };
+  const PAGE_HEAD = {
+    dash: ['ภาพรวม', 'สรุปงานค้างและสิ่งที่ต้องทำวันนี้'],
+    list: ['ทะเบียนหนังสือรับ', 'ค้นหา กรอง และเปิดหนังสือรับทั้งหมด'],
+    out: ['หนังสือส่ง', 'ทะเบียนบันทึกข้อความและใบแยก'],
+    tpl: ['แนวทางเกษียณ', 'ข้อความใน { } ระบบเติมให้เอง'],
+    people: ['บุคลากร / ตำแหน่ง', 'ใช้เติมชื่อ-ตำแหน่งท้ายเกษียณ และคำว่า "เรียน ..."'],
+    printer: ['เครื่องพิมพ์', 'ปรับเทียบครั้งเดียวต่อเครื่อง'],
+    ai: ['AI ช่วยงาน', 'คุณเป็นผู้ตรวจและตัดสินใจขั้นสุดท้ายทุกครั้ง'],
+    guide: ['คู่มือ', 'วิธีใช้งานและตรวจตำแหน่งพิมพ์'],
+    settings: ['ตั้งค่า', 'ผู้ใช้งาน ถังขยะ และสำรองข้อมูล']
+  };
   let renderTimer = null;
   A.scheduleRender = function () { clearTimeout(renderTimer); renderTimer = setTimeout(A.render, 60); };
   A.render = function () {
     const f = A.views[S.view];
     // หน้าหนังสือมีการแก้ไขค้างอยู่ — ไม่วาดใหม่ทั้งหน้าเมื่อข้อมูลในฐานข้อมูลเปลี่ยน
     if (S.view === 'letter') { if (!$('lwPanel')) A.views.letter(); else A.views.letterRefresh(); return; }
-    if (f) f($('view-' + S.view));
+    if (f) {
+      const el = $('view-' + S.view);
+      f(el);
+      // หัวหน้าแท็บ (แบบ A) — ไม่ใส่ตอนกำลังแก้หนังสือส่ง
+      const h = PAGE_HEAD[S.view];
+      if (h && !el.querySelector('#ofForm') && !el.querySelector('.pagehead')) {
+        el.insertAdjacentHTML('afterbegin', '<div class="pagehead"><h2>' + h[0] + '</h2><p>' + h[1] + '</p></div>');
+      }
+    }
     const n = A.letters().filter(function (l) { const d = A.dueInfo(l); return d && d.d <= 0; }).length;
     const t = $('tabs').querySelector('[data-view="list"]');
     t.innerHTML = 'ทะเบียนหนังสือรับ' + (n ? '<span class="cnt">' + n + '</span>' : '');
@@ -406,11 +425,17 @@
     el.innerHTML = '<div class="card"><div class="section-title">ทะเบียนหนังสือรับ <span class="sub">' + rows.length + ' ฉบับ</span>' +
       '<span class="right"><button class="btn btn-sm btn-outline" id="lsCsv">ส่งออก CSV</button><button class="btn btn-sm btn-primary" id="lsNew">+ รับหนังสือใหม่</button></span></div>' +
       '<div class="toolbar"><input class="inp grow" id="lsQ" placeholder="ค้นหา เลขรับ / ที่ / เรื่อง / ผู้ส่ง" value="' + esc(ui.q) + '"><select class="inp" id="lsSt">' + A.opts(stOpts, ui.st) + '</select></div>' +
+      '<div style="margin-bottom:10px">' + [['open', 'ค้างดำเนินการ'], ['late', 'เกินกำหนด'], ['done', 'ดำเนินการแล้ว'], ['all', 'ทั้งหมด']].map(function (c) {
+        const all = A.letters();
+        const n = c[0] === 'open' ? all.filter(A.isOpen).length : c[0] === 'late' ? all.filter(function (l) { const d = A.dueInfo(l); return d && d.d < 0; }).length : c[0] === 'all' ? all.length : all.filter(function (l) { return l.status === c[0]; }).length;
+        return '<span class="chip' + (ui.st === c[0] ? ' active' : '') + '" data-chip="' + c[0] + '">' + c[1] + ' <b>' + n + '</b></span>';
+      }).join('') + '</div>' +
       (rows.length ? letterTable(rows, false) : '<div class="empty">ไม่พบหนังสือ</div>') + '</div>';
     bindCommon(el);
     const q = el.querySelector('#lsQ');
     q.oninput = function () { ui.q = q.value; clearTimeout(q._t); q._t = setTimeout(function () { A.render(); const n = $('lsQ'); n.focus(); n.setSelectionRange(n.value.length, n.value.length); }, 300); };
     el.querySelector('#lsSt').onchange = function () { ui.st = this.value; A.render(); };
+    el.querySelectorAll('[data-chip]').forEach(function (c) { c.onclick = function () { ui.st = c.dataset.chip; A.render(); }; });
     el.querySelector('#lsNew').onclick = A.newLetterDialog;
     el.querySelector('#lsCsv').onclick = function () {
       const head = ['เลขรับ', 'วันที่รับ', 'ที่', 'ลงวันที่', 'จาก', 'เรื่อง', 'ความเร่งด่วน', 'กำหนดส่ง', 'ผู้รับผิดชอบ', 'สถานะ', 'สรุป', 'ลิงก์'];
