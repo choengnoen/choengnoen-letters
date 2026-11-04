@@ -6,7 +6,7 @@
 (function () {
   'use strict';
   const D = window.LTR_DATA, esc = U.esc;
-  const S = { team: [], letters: [], settings: null, view: 'dash', ui: { q: '', st: 'open' }, openId: null };
+  const S = { team: [], letters: [], out: [], settings: null, view: 'dash', ui: { q: '', st: 'open' }, openId: null };
   const A = window.App = { S: S, views: {}, D: D };
   function $(id) { return document.getElementById(id); }
   A.$ = $;
@@ -91,6 +91,7 @@
 
   /* ======================= หนังสือ ======================= */
   A.letters = function () { return S.letters.filter(function (l) { return !l.deletedAt; }); };
+  A.outs = function () { return S.out.filter(function (l) { return !l.deletedAt; }); };
   A.letter = function (id) { return S.letters.find(function (l) { return l.id === id; }) || null; };
   A.saveLetter = async function (rec, summary) {
     const id = await FBL.save('letters', rec, summary || rec.subject || rec.regNo);
@@ -126,7 +127,7 @@
   function renderAuthGate(errorMsg) {
     const g = gate(); hideLoading(); g.classList.add('show');
     $('appHeader').style.display = 'none'; $('main').style.display = 'none';
-    const head = '<img src="logo.png" alt="ตรากรมทางหลวง" class="auth-logo"><h2>หนังสือราชการ &amp; เกษียณหนังสือ</h2>' +
+    const head = '<img src="logo.png" alt="ตรากรมทางหลวง" class="auth-logo"><h2>ผู้ช่วยสารบรรณ</h2>' +
       '<p class="auth-sub">หมวดทางหลวงเชิงเนิน · แขวงทางหลวงระยอง</p>';
     const demo = FBL.mode === 'demo' ? '<div class="auth-demo">โหมดทดลอง: ยังไม่ได้เชื่อม Firebase — ข้อมูลเก็บในเบราว์เซอร์เครื่องนี้เท่านั้น</div>' : '';
     const errHtml = '<p class="hint auth-error" id="gateError" style="' + (errorMsg ? '' : 'display:none') + '">' + esc(errorMsg || '') + '</p>';
@@ -199,11 +200,12 @@
     $('btnLogout').onclick = async function () { await FBL.logout(); location.reload(); };
     $('btnNewLetter').onclick = function () { A.newLetterDialog(); };
     $('tabs').querySelectorAll('.tab-btn').forEach(function (b) { b.onclick = function () { A.go(b.dataset.view); }; });
-    const [letters, settings] = await Promise.all([
+    const [letters, settings, out] = await Promise.all([
       FBL.watch('letters', function (docs) { S.letters = docs; A.scheduleRender(); }),
-      FBL.watch('settings', function (docs) { S.settings = docs.find(function (d) { return d.id === 'app'; }) || null; updateWho(); A.scheduleRender(); })
+      FBL.watch('settings', function (docs) { S.settings = docs.find(function (d) { return d.id === 'app'; }) || null; updateWho(); A.scheduleRender(); }),
+      FBL.watch('out', function (docs) { S.out = docs; A.scheduleRender(); })
     ]);
-    S.letters = letters; S.settings = settings.find(function (d) { return d.id === 'app'; }) || null;
+    S.letters = letters; S.out = out; S.settings = settings.find(function (d) { return d.id === 'app'; }) || null;
     await migratePeople();
     updateWho();
     hideLoading();
@@ -236,7 +238,7 @@
     S.view = v;
     $('tabs').querySelectorAll('.tab-btn').forEach(function (b) { b.classList.toggle('active', b.dataset.view === v); });
     document.querySelectorAll('.view').forEach(function (s) { s.classList.toggle('active', s.id === 'view-' + v); });
-    $('main').classList.toggle('wide', v === 'letter');
+    $('main').classList.toggle('wide', v === 'letter' || v === 'out');
     if (!noHist) try { history.replaceState(null, '', '#' + v); } catch (e) { /* ข้าม */ }
     A.render();
     window.scrollTo(0, 0);
@@ -386,11 +388,6 @@
     });
     el.querySelectorAll('[data-go]').forEach(function (b) { b.onclick = function () { A.go(b.dataset.go); }; });
   }
-
-  /* ======================= หนังสือส่ง (ฟอร์มและทะเบียนส่งจะเพิ่มในเฟสถัดไป) ======================= */
-  A.views.out = function (el) {
-    el.innerHTML = '<div class="card"><div class="section-title">หนังสือส่ง</div><div class="empty">ส่วนร่างบันทึกข้อความและทะเบียนส่งกำลังจัดทำ</div></div>';
-  };
 
   /* ======================= ทะเบียนหนังสือรับ ======================= */
   A.views.list = function (el) {
@@ -667,7 +664,8 @@
 
   A.views.settings = async function (el) {
     const u = FBL.user, own = u.isOwner, can = A.can();
-    const trash = S.letters.filter(function (l) { return l.deletedAt; });
+    const trash = S.letters.filter(function (l) { return l.deletedAt; }).map(function (l) { return Object.assign({ _col: 'letters', _no: l.regNo }, l); })
+      .concat(S.out.filter(function (l) { return l.deletedAt; }).map(function (l) { return Object.assign({ _col: 'out', _no: 'หนังสือส่ง ' + (l.docSuffix || 'ร่าง') }, l); }));
     el.innerHTML = '<div class="split"><div>' +
       '<div class="card"><div class="section-title">ผู้ใช้งานระบบ' + (own ? '<span class="right"><button class="btn btn-sm btn-primary" id="stAdd">+ เพิ่มผู้ใช้</button></span>' : '') + '</div>' +
       '<div class="table-wrap"><table class="data"><thead><tr><th>ชื่อ</th><th>สิทธิ์</th>' + (own ? '<th></th>' : '') + '</tr></thead><tbody>' +
@@ -680,8 +678,8 @@
       '<div class="flex" style="margin-top:12px"><button class="btn btn-outline btn-sm" id="stMyPw">เปลี่ยนรหัสผ่านของฉัน</button></div></div>' +
       '<div class="card"><div class="section-title">ถังขยะ <span class="sub">' + trash.length + ' ฉบับ</span></div>' +
       (trash.length ? '<div class="table-wrap"><table class="data"><tbody>' + trash.map(function (l) {
-        return '<tr><td>' + esc(l.regNo) + ' · ' + esc(l.subject || '') + '<br><span class="muted small">ลบโดย ' + esc(l.deletedBy || '') + '</span></td><td class="nowrap"><button class="btn btn-sm btn-outline" data-rs="' + esc(l.id) + '">กู้คืน</button>' +
-          (can ? ' <button class="btn btn-sm btn-danger" data-hd="' + esc(l.id) + '">ลบถาวร</button>' : '') + '</td></tr>';
+        return '<tr><td>' + esc(l._no) + ' · ' + esc(l.subject || '') + '<br><span class="muted small">ลบโดย ' + esc(l.deletedBy || '') + '</span></td><td class="nowrap"><button class="btn btn-sm btn-outline" data-rs="' + esc(l.id) + '" data-col="' + l._col + '">กู้คืน</button>' +
+          (can ? ' <button class="btn btn-sm btn-danger" data-hd="' + esc(l.id) + '" data-col="' + l._col + '">ลบถาวร</button>' : '') + '</td></tr>';
       }).join('') + '</tbody></table></div>' : '<div class="empty">ว่าง</div>') + '</div></div>' +
       '<div><div class="card"><div class="section-title">สำรองข้อมูล</div><div class="flex"><button class="btn btn-outline" id="stExp">ส่งออกข้อมูลทั้งหมด (.json)</button></div>' +
       '<p class="hint">ไฟล์ .json มีทะเบียน ผลวิเคราะห์ เกษียณ และการตั้งค่า (ไม่รวมไฟล์สแกน)</p>' +
@@ -723,20 +721,23 @@
       el.querySelectorAll('[data-rpw]').forEach(function (b) { b.onclick = function () { pwDialog(b.dataset.rpw); }; });
     }
     q('#stMyPw').onclick = function () { pwDialog(null); };
-    el.querySelectorAll('[data-rs]').forEach(function (b) { b.onclick = async function () { try { await FBL.restore('letters', b.dataset.rs); A.toast('กู้คืนแล้ว'); } catch (e) { A.toast(e.message, true); } }; });
+    el.querySelectorAll('[data-rs]').forEach(function (b) { b.onclick = async function () { try { await FBL.restore(b.dataset.col, b.dataset.rs); A.toast('กู้คืนแล้ว'); } catch (e) { A.toast(e.message, true); } }; });
     el.querySelectorAll('[data-hd]').forEach(function (b) {
       b.onclick = async function () {
-        if (!(await A.confirm('ลบถาวร รวมไฟล์สแกน? กู้คืนไม่ได้', 'ลบถาวร', true))) return;
-        const l = A.letter(b.dataset.hd);
+        if (!(await A.confirm('ลบถาวร รวมไฟล์ที่แนบ? กู้คืนไม่ได้', 'ลบถาวร', true))) return;
+        const isOut = b.dataset.col === 'out';
+        const l = (isOut ? S.out : S.letters).find(function (x) { return x.id === b.dataset.hd; });
+        if (!l) return;
         try {
-          for (const f of (l.files || [])) await FBL.deleteFile(f.path);
-          await FBL.hardDelete('letters', l.id, l.regNo + ' ' + (l.subject || ''));
+          const paths = isOut ? (l.attachments || []).reduce(function (a, x) { return a.concat((x.images || []).map(function (im) { return im.path; })); }, []) : (l.files || []).map(function (f) { return f.path; });
+          for (const p of paths) await FBL.deleteFile(p);
+          await FBL.hardDelete(b.dataset.col, l.id, (isOut ? (l.docSuffix || 'ร่าง') : l.regNo) + ' ' + (l.subject || ''));
           A.toast('ลบถาวรแล้ว');
         } catch (e) { A.toast(e.message, true); }
       };
     });
     q('#stExp').onclick = function () {
-      const data = { exportedAt: new Date().toISOString(), letters: S.letters, settings: A.settings() };
+      const data = { exportedAt: new Date().toISOString(), letters: S.letters, out: S.out, settings: A.settings() };
       const a = document.createElement('a');
       a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 1)], { type: 'application/json' }));
       a.download = 'สำรอง-หนังสือราชการ-' + U.today() + '.json'; a.click();

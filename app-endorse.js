@@ -147,6 +147,7 @@
     document.body.appendChild(f);
     f.srcdoc = html;
   }
+  EN.sendToPrinter = sendToPrinter;
 
   EN.print = function (mode, o) {
     // o: { page, L, xMm, yMm, letter }

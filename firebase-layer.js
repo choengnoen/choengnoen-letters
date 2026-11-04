@@ -17,6 +17,7 @@
    ข้อมูล (collection) — ขึ้นต้นด้วย letters เพื่อไม่ชนกับระบบอื่นในโปรเจกต์เดียวกัน
      letters          — ทะเบียนหนังสือรับ (1 เอกสาร = หนังสือ 1 ฉบับ พร้อมผลวิเคราะห์ ลิงก์ QR และข้อความเกษียณ)
      letters_settings — letters_settings/app : บุคลากร/ตำแหน่ง, แนวทางเกษียณ, ข้อมูลหน่วยงาน (ในโค้ดหน้าเว็บเรียกว่า 'settings')
+     letters_out      — ทะเบียนหนังสือส่ง / บันทึกข้อความ (ในโค้ดหน้าเว็บเรียกว่า 'out')
      letters_files    — ไฟล์ต้นฉบับ (PDF/รูปสแกน) แบ่งเป็นชิ้น — เฉพาะเมื่อยังไม่ใช้ Google Drive หรือไฟล์เดิมที่ยังไม่ได้ย้าย
    ========================================================================== */
 (function () {
@@ -37,11 +38,11 @@
   const DRIVE_BRIDGE_URL = 'https://script.google.com/macros/s/AKfycbx5BHleoNVSzw4bYFFc7kg00_D98JfwEKeCO_BFsNLNj_2DqRzuvq8rLgkU_IKCqlKRNA/exec';   // Apps Script: choengnoen-letters
 
   const EMAIL_DOMAIN = 'project.invalid';   // เหมือนระบบผู้ควบคุมงาน เพราะใช้รายชื่อผู้ใช้ชุดเดียวกัน
-  const COLS = ['letters', 'settings'];
+  const COLS = ['letters', 'settings', 'out'];
   // ชื่อที่หน้าเว็บใช้ → ชื่อ collection จริงใน Firestore (ชื่อ settings/files ธรรมดาอาจชนกับระบบอื่นในโปรเจกต์)
-  const PHYS = { letters: 'letters', settings: 'letters_settings', files: 'letters_files' };
+  const PHYS = { letters: 'letters', settings: 'letters_settings', files: 'letters_files', out: 'letters_out' };
   function colName(col) { return PHYS[col] || col; }
-  const LOG_PREFIX = /^letters(_settings)?\//;
+  const LOG_PREFIX = /^letters(_settings|_out)?\//;
 
   const params = new URLSearchParams(location.search);
   const configured = /^AIza/.test(firebaseConfig.apiKey || '');
