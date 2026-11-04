@@ -327,7 +327,7 @@
   let clientP = null, clientKey = '';
   async function client() {
     const cfg = AI.cfg();
-    if (!cfg.key) throw new Error('ยังไม่ได้ใส่ API key ที่แท็บ "AI ช่วยงาน"');
+    if (!cfg.key) throw new Error('ยังไม่ได้ใส่ API key ที่ ตั้งค่า › AI ช่วยงาน');
     if (!clientP || clientKey !== cfg.key) {
       clientKey = cfg.key;
       clientP = import(LIB.anthropic).then(function (mod) {

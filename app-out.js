@@ -269,23 +269,25 @@
       if (a.status === 'issued') return numOf(b) - numOf(a);
       return String(b.updatedAt || '').localeCompare(String(a.updatedAt || ''));
     });
-    el.innerHTML = '<div class="card"><div class="section-title">ทะเบียนหนังสือส่ง <span class="sub">' + rows.length + ' ฉบับ</span>' +
-      '<span class="right"><button class="btn btn-sm btn-outline" id="olReg">พิมพ์ทะเบียนส่ง</button><button class="btn btn-sm btn-outline" id="olBook">พิมพ์ บ.1-03</button><button class="btn btn-sm btn-primary" id="olNew">+ ร่างบันทึกข้อความ</button></span></div>' +
-      '<div class="toolbar"><input class="inp grow" id="olQ" placeholder="ค้นหา เลขที่ / เรื่อง / เรียน / เนื้อหา" value="' + esc(ui.q) + '"><select class="inp" id="olSt">' +
-      A.opts([{ key: 'all', name: 'ทั้งหมด' }, { key: 'draft', name: 'ร่าง' }, { key: 'issued', name: 'ออกแล้ว' }], ui.st) + '</select></div>' +
-      (rows.length ? '<div class="table-wrap"><table class="data"><thead><tr><th>เลขที่</th><th>ลงวันที่</th><th>เรื่อง</th><th>เรียน</th><th>การปฏิบัติ</th><th>หมายเหตุ</th><th>ใบแยก</th><th>สถานะ</th><th></th></tr></thead><tbody>' +
+    const all = A.outs();
+    const segs = [['all', 'ทั้งหมด', all.length], ['draft', 'ร่าง', all.filter(function (r) { return r.status !== 'issued'; }).length], ['issued', 'ออกแล้ว', all.filter(function (r) { return r.status === 'issued'; }).length]];
+    el.innerHTML = A.pageHead('ทะเบียนหนังสือส่ง', rows.length + ' ฉบับ',
+        '<button class="btn btn-sm btn-outline" id="olReg">พิมพ์ทะเบียนส่ง</button><button class="btn btn-sm btn-outline" id="olBook">พิมพ์ บ.1-03</button><button class="btn btn-sm btn-primary" id="olNew">+ ร่างบันทึกข้อความ</button>') +
+      '<div class="card card-flush"><div class="filterbar"><div class="seg">' + segs.map(function (c) {
+        return '<button class="' + (ui.st === c[0] ? 'on' : '') + '" data-ost="' + c[0] + '">' + c[1] + ' <b class="num">' + c[2] + '</b></button>';
+      }).join('') + '</div><input class="inp search" id="olQ" placeholder="ค้นหาเลขที่ เรื่อง เรียน เนื้อหา" value="' + esc(ui.q) + '"></div>' +
+      (rows.length ? '<div class="table-wrap"><table class="data wide"><thead><tr><th>เลขที่</th><th>ลงวันที่</th><th>เรื่อง</th><th>เรียน</th><th>การปฏิบัติ</th><th>หมายเหตุ</th><th class="c">ใบแยก</th><th>สถานะ</th><th></th></tr></thead><tbody>' +
         rows.map(function (r) {
-          return '<tr class="clickable" data-oopen="' + esc(r.id) + '"><td class="nowrap">' + esc(r.docSuffix || '-') + '</td><td class="nowrap">' + esc(U.thDate(r.docDate, 'short')) + '</td><td>' + esc(r.subject || '(ยังไม่มีเรื่อง)') + '</td><td class="small">' + esc(r.to || '') + '</td><td class="small">' + esc(r.regAction || '') + '</td><td class="small">' + esc(r.regNote || '') + '</td>' +
-            '<td class="c">' + ((r.attachments || []).length || '') + '</td><td><span class="badge ' + (r.status === 'issued' ? 'b-ok' : 'b-info') + '">' + (r.status === 'issued' ? 'ออกแล้ว' : 'ร่าง') + '</span></td>' +
-            '<td class="nowrap"><button class="btn btn-sm btn-outline" data-ocopy="' + esc(r.id) + '">คัดลอก</button></td></tr>';
-        }).join('') + '</tbody></table></div>' : '<div class="empty">ยังไม่มีหนังสือส่ง — กด "+ ร่างบันทึกข้อความ"</div>') +
-      '<p class="hint" style="margin-top:10px">ดับเบิลคลิกแถวเพื่อเปิด · คัดลอกจะได้ร่างใหม่ที่ไม่มีเลขที่ วันที่ และรูป</p></div>';
+          return '<tr class="clickable" data-oopen="' + esc(r.id) + '"><td class="nowrap num strong">' + (r.docSuffix ? esc(r.docSuffix) : '<span class="muted">—</span>') + '</td><td class="nowrap">' + esc(U.thDate(r.docDate, 'short')) + '</td><td class="subj">' + (r.subject ? esc(r.subject) : '<span class="muted">(ยังไม่มีเรื่อง)</span>') + '</td><td class="small">' + esc(r.to || '') + '</td><td class="small">' + esc(r.regAction || '') + '</td><td class="small">' + esc(r.regNote || '') + '</td>' +
+            '<td class="c num">' + ((r.attachments || []).length || '') + '</td><td class="nowrap"><span class="badge ' + (r.status === 'issued' ? 'b-ok' : 'b-info') + '">' + (r.status === 'issued' ? 'ออกแล้ว' : 'ร่าง') + '</span></td>' +
+            '<td class="nowrap r"><button class="btn btn-sm btn-outline" data-ocopy="' + esc(r.id) + '" title="ได้ร่างใหม่ที่ไม่มีเลขที่ วันที่ และรูป">คัดลอก</button></td></tr>';
+        }).join('') + '</tbody></table></div><div class="cf-foot">ดับเบิลคลิกแถวเพื่อเปิด</div>' : '<div class="empty">ไม่พบหนังสือส่ง</div>') + '</div>';
     $('olNew').onclick = newDialog;
     $('olBook').onclick = printBook;
     $('olReg').onclick = printRegister;
     const q = $('olQ');
     q.oninput = function () { ui.q = q.value; clearTimeout(q._t); q._t = setTimeout(function () { A.render(); const n = $('olQ'); n.focus(); n.setSelectionRange(n.value.length, n.value.length); }, 300); };
-    $('olSt').onchange = function () { ui.st = this.value; A.render(); };
+    el.querySelectorAll('[data-ost]').forEach(function (b) { b.onclick = function () { ui.st = b.dataset.ost; A.render(); }; });
     el.querySelectorAll('[data-oopen]').forEach(function (tr) { tr.ondblclick = function () { openRec(tr.dataset.oopen); }; });
     el.querySelectorAll('[data-ocopy]').forEach(function (b) {
       b.onclick = function (e) { e.stopPropagation(); copyRec(b.dataset.ocopy); };
@@ -297,8 +299,8 @@
     const T = D.OUT_TEMPLATES;
     const m = A.modal({
       title: 'เลือกแบบบันทึกข้อความ', size: '',
-      body: '<div class="grid grid-2"><button class="btn btn-outline" style="white-space:normal;justify-content:flex-start;text-align:left" data-tp="">เริ่มจากหน้าว่าง</button>' +
-        T.map(function (t) { return '<button class="btn btn-outline" style="white-space:normal;justify-content:flex-start;text-align:left" data-tp="' + esc(t.id) + '">' + esc(t.title) + '</button>'; }).join('') + '</div>',
+      body: '<div class="grid grid-2"><button class="btn btn-outline btn-choice" data-tp="">เริ่มจากหน้าว่าง</button>' +
+        T.map(function (t) { return '<button class="btn btn-outline btn-choice" data-tp="' + esc(t.id) + '">' + esc(t.title) + '</button>'; }).join('') + '</div>',
       foot: '<button class="btn btn-outline" data-close>ยกเลิก</button>'
     });
     document.querySelectorAll('[data-tp]').forEach(function (b) {
@@ -374,29 +376,40 @@
     el.innerHTML = '<div class="ws-head"><button class="btn btn-sm btn-outline" id="ofBack">← ทะเบียน</button><h2>' + (r.status === 'issued' ? 'หนังสือที่ ' + esc(r.docSuffix) : 'ร่างบันทึกข้อความ') + '</h2>' +
       '<span class="small muted" id="ofPages"></span><span class="hint" id="ofDirty">' + (OS.dirty ? 'มีการแก้ไขที่ยังไม่บันทึก' : '') + '</span>' +
       '<button class="btn btn-sm btn-danger" id="ofDel">ลบ</button></div>' +
-      '<div class="ws"><div class="viewer card" style="padding:10px"><div class="pagebox" id="ofPreview"></div></div>' +
-      '<div id="ofForm"><div class="card"><div class="section-title">บันทึกข้อความ</div>' +
-      '<div class="grid grid-2">' +
+      '<div class="ws ofws"><div class="viewer card" style="padding:10px"><div class="pagebox" id="ofPreview"></div></div>' +
+      '<div id="ofForm" class="card ofpanel"><div class="subtabs">' +
+      '<button class="subtab active" data-oft="msg">ข้อความ</button><button class="subtab" data-oft="sign">ผู้ลงนาม</button>' +
+      '<button class="subtab" data-oft="att">ใบแยก<span class="cnt" id="ofAttCnt"></span></button><button class="subtab" data-oft="reg">ทะเบียนส่ง</button></div>' +
+      '<div class="ofpane on" data-ofp="msg"><div class="grid grid-3" style="grid-template-columns:1.7fr 1.2fr .9fr">' +
       '<div class="field"><label>ที่</label><input value="' + esc(fullNo(r)) + '" disabled></div>' +
       '<div class="field"><label>ลงวันที่</label><input value="' + esc(U.thDate(r.docDate) || 'เว้นไว้ กรอกหลังลงนาม') + '" disabled></div>' +
-      '<div class="field"><label>ชั้นความเร็ว</label><select data-o="urgency">' + A.opts(D.URGENCY, r.urgency || D.URGENCY[0]) + '</select></div>' +
-      '<div class="field"></div>' +
+      '<div class="field"><label>ชั้นความเร็ว</label><select data-o="urgency">' + A.opts(D.URGENCY, r.urgency || D.URGENCY[0]) + '</select></div></div>' +
+      '<div class="grid grid-2" style="margin-top:12px">' +
       '<div class="field span-all"><label>เรื่อง</label><input data-o="subject" value="' + esc(r.subject) + '"></div>' +
       '<div class="field"><label>เรียน</label><input data-o="to" value="' + esc(r.to) + '"></div>' +
       '<div class="field"><label>ผ่าน (เว้นว่างได้)</label><input data-o="via" list="ofVia" value="' + esc(r.via) + '"><datalist id="ofVia">' + CFG.via.map(function (v) { return '<option value="' + esc(v) + '">'; }).join('') + '</datalist></div>' +
-      '<div class="field span-all"><label>เนื้อหา (ขึ้นบรรทัดใหม่ = ขึ้นย่อหน้าใหม่ ไม่ต้องเว้นวรรคเอง)</label><textarea data-o="body" rows="11">' + esc(r.body) + '</textarea><span class="hint">ปกติมี 3 ย่อหน้า: ที่มา (ด้วย.../เนื่องจาก... หรือถ้าตอบ ตามที่...นั้น) · ความประสงค์ · ย้ำความประสงค์ (คำลงท้าย)</span><div id="ofLint"></div></div>' +
+      '<div class="field span-all"><label>เนื้อหา (ขึ้นบรรทัดใหม่ = ย่อหน้าใหม่)</label><textarea data-o="body" rows="11">' + esc(r.body) + '</textarea><span class="hint">ปกติ 3 ย่อหน้า: ที่มา · ความประสงค์ · ย้ำความประสงค์</span><div id="ofLint"></div></div>' +
       '<div class="field span-all"><label>คำลงท้าย</label><input data-o="closing" list="ofCl" value="' + esc(r.closing) + '"><datalist id="ofCl">' + D.OUT_CLOSINGS.map(function (v) { return '<option value="' + esc(v) + '">'; }).join('') + '</datalist></div>' +
+      '</div></div>' +
+      '<div class="ofpane" data-ofp="sign"><div class="grid grid-2">' +
       '<div class="field span-all"><label>ผู้ลงนาม</label><select id="ofSigner">' + A.opts(ppl, r.signerId, 'กำหนดเอง') + '</select></div>' +
       '<div class="field"><label>ชื่อในวงเล็บ</label><input data-o="signerName" value="' + esc(r.signerName) + '"></div>' +
       '<div class="field"><label>ตำแหน่งใต้ชื่อ</label><input data-o="signerPos" value="' + esc(r.signerPos) + '"></div>' +
       '<div class="field span-all"><label><input type="checkbox" id="ofThai"' + (r.thaiDigits === false ? '' : ' checked') + '>แปลงตัวเลขทั้งฉบับเป็นเลขไทย</label></div></div></div>' +
-      '<div class="card"><div class="section-title">ใบแยก <span class="sub">ใบแนบรูป/ผัง มีช่องลงนามของผู้ลงนามด้านล่างขวาทุกแผ่น</span><span class="right"><button class="btn btn-sm btn-outline" id="ofAddAtt">+ เพิ่มใบแยก</button></span></div><div id="ofAtts"></div></div>' +
-      '<div class="card"><div class="section-title">ทะเบียนส่ง <span class="sub">ลงในทะเบียนหนังสือส่ง แบบที่ 14</span></div><div class="grid grid-2">' +
+      '<div class="ofpane" data-ofp="att"><div class="section-title" style="margin-bottom:10px"><span class="sub">ใบแนบรูป/ผัง มีช่องลงนามล่างขวาทุกแผ่น</span><span class="right"><button class="btn btn-sm btn-outline" id="ofAddAtt">+ เพิ่มใบแยก</button></span></div><div id="ofAtts"></div></div>' +
+      '<div class="ofpane" data-ofp="reg"><div class="hint" style="margin-bottom:10px">ลงในทะเบียนหนังสือส่ง แบบที่ 14</div><div class="grid grid-2">' +
       '<div class="field"><label>การปฏิบัติ</label><input data-o="regAction" value="' + esc(r.regAction || '') + '" placeholder="เช่น ส่งแขวงแล้ว รอตอบ"></div>' +
       '<div class="field"><label>หมายเหตุ</label><input data-o="regNote" value="' + esc(r.regNote || '') + '"></div></div></div>' +
-      '<div class="flex" style="margin-bottom:16px"><button class="btn btn-primary" id="ofSave">บันทึก</button><button class="btn btn-outline" id="ofPrint">พิมพ์ / บันทึก PDF</button>' +
+      '<div class="ofact"><button class="btn btn-primary" id="ofSave">บันทึก</button><button class="btn btn-outline" id="ofPrint">พิมพ์ / บันทึก PDF</button>' +
       (r.status === 'issued' ? '<button class="btn btn-outline" id="ofIssue">แก้เลขที่/วันที่</button><button class="btn btn-outline" id="ofUndo">กลับเป็นร่าง</button>' : '<button class="btn btn-gold" id="ofIssue">กรอกเลขที่หลังลงนาม</button>') +
-      '</div><p class="hint">หน้าต่างพิมพ์ต้องตั้ง: A4 · ระยะขอบ "ไม่มี" · มาตราส่วน 100% · ปิดส่วนหัว/ท้าย</p></div></div>';
+      '</div><p class="hint" style="margin:10px 0 0">ตั้งค่าพิมพ์: A4 · ระยะขอบ "ไม่มี" · 100% · ปิดส่วนหัว/ท้าย</p></div></div>';
+
+    el.querySelectorAll('[data-oft]').forEach(function (b) {
+      b.onclick = function () {
+        el.querySelectorAll('[data-oft]').forEach(function (x) { x.classList.toggle('active', x === b); });
+        el.querySelectorAll('[data-ofp]').forEach(function (p) { p.classList.toggle('on', p.dataset.ofp === b.dataset.oft); });
+      };
+    });
 
     el.querySelectorAll('[data-o]').forEach(function (i) {
       const onEdit = function () { r[i.dataset.o] = i.value; setDirty(); schedulePreview(); };
@@ -430,7 +443,7 @@
       try { await saveRec('กลับเป็นร่าง'); renderEditor(el); } catch (e) { A.toast(e.message, true); }
     };
     $('ofDel').onclick = async function () {
-      if (!(await A.confirm('ย้ายฉบับนี้ไปถังขยะ? (กู้คืนได้ที่แท็บตั้งค่า)', 'ย้ายไปถังขยะ', true))) return;
+      if (!(await A.confirm('ย้ายฉบับนี้ไปถังขยะ? (กู้คืนได้ที่ ตั้งค่า › ผู้ใช้และข้อมูล)', 'ย้ายไปถังขยะ', true))) return;
       const saved = A.outs().some(function (x) { return x.id === r.id; });
       try { if (saved) await FBL.softDelete('out', r.id, r.subject || ''); OS.dirty = false; await closeEditor(); A.toast('ย้ายไปถังขยะแล้ว'); } catch (e) { A.toast(e.message, true); }
     };
@@ -495,6 +508,7 @@
       });
       card.querySelector('[data-rmatt]').onclick = function () { list.splice(+card.dataset.att, 1); setDirty(); renderAtts(); schedulePreview(); };
     });
+    const cnt = $('ofAttCnt'); if (cnt) cnt.textContent = list.length || '';
   }
 
   /* ---------- กรอกเลขที่และวันที่หลังลงนาม ---------- */

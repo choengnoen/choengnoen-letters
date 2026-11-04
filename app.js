@@ -11,6 +11,22 @@
   function $(id) { return document.getElementById(id); }
   A.$ = $;
 
+  /* ไอคอนเส้นชุดเดียว ใช้แทนอิโมจิในส่วนหน้าตาหลัก */
+  const ICONS = {
+    inbox: '<path d="M4 13l2.5-7.5A2 2 0 0 1 8.4 4h7.2a2 2 0 0 1 1.9 1.5L20 13v5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><path d="M4 13h4.5l1.5 2.5h4l1.5-2.5H20"/>',
+    stack: '<path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/>',
+    clock: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>',
+    alert: '<path d="M10.3 4.2L2.8 17.5A2 2 0 0 0 4.5 20.5h15a2 2 0 0 0 1.7-3L13.7 4.2a2 2 0 0 0-3.4 0z"/><path d="M12 9.5v4M12 17h.01"/>',
+    check: '<circle cx="12" cy="12" r="8.5"/><path d="M8.5 12.2l2.4 2.4 4.6-4.8"/>',
+    link: '<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3A4 4 0 0 0 11 18.7l1-1"/>',
+    chev: '<path d="M9.5 6l6 6-6 6"/>'
+  };
+  A.ic = function (n) { return '<svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (ICONS[n] || '') + '</svg>'; };
+  // หัวหน้าแบบเดียวกันทุกแท็บ: ชื่อ · คำอธิบายสั้น · ปุ่มคำสั่งชิดขวา
+  A.pageHead = function (title, sub, actions) {
+    return '<div class="pagehead"><div class="ph-t"><h2>' + title + '</h2>' + (sub ? '<p>' + sub + '</p>' : '') + '</div>' + (actions ? '<div class="ph-a">' + actions + '</div>' : '') + '</div>';
+  };
+
   /* ======================= ตัวช่วยหน้าจอ ======================= */
   let toastTimer = null;
   A.toast = function (msg, isErr) {
@@ -199,7 +215,7 @@
     $('demoBadge').style.display = FBL.mode === 'demo' ? '' : 'none';
     $('btnLogout').onclick = async function () { await FBL.logout(); location.reload(); };
     $('btnNewLetter').onclick = function () { A.newLetterDialog(); };
-    $('tabs').querySelectorAll('.tab-btn').forEach(function (b) { b.onclick = function () { A.go(b.dataset.view); }; });
+    $('tabs').querySelectorAll('.tab-btn').forEach(function (b) { b.onclick = function () { A.go(b.dataset.view === 'settings' ? lastSetView : b.dataset.view); }; });
     const [letters, settings, out] = await Promise.all([
       FBL.watch('letters', function (docs) { S.letters = docs; A.scheduleRender(); }),
       FBL.watch('settings', function (docs) { S.settings = docs.find(function (d) { return d.id === 'app'; }) || null; updateWho(); A.scheduleRender(); }),
@@ -228,31 +244,26 @@
   }
   function updateWho() {
     const me = A.me();
-    $('whoDisplay').textContent = 'ผู้ใช้: ' + FBL.user.name + A.roleTag(FBL.user) + (me ? ' · ' + me.position : '');
+    $('whoDisplay').textContent = FBL.user.name + (me ? ' · ' + (me.abbr || me.position) : '');
   }
 
   const VIEWS = ['dash', 'list', 'letter', 'out', 'tpl', 'people', 'printer', 'ai', 'guide', 'settings'];
+  // แท็บ "ตั้งค่า" รวมหน้าเหล่านี้ไว้ด้วยกัน (สลับด้วยแถบย่อยด้านบน)
+  const SET_NAV = [['people', 'บุคลากร'], ['printer', 'เครื่องพิมพ์'], ['ai', 'AI ช่วยงาน'], ['settings', 'ผู้ใช้และข้อมูล']];
+  const isSetView = function (v) { return SET_NAV.some(function (x) { return x[0] === v; }); };
+  let lastSetView = 'people';
   A.go = function (v, noHist) {
     if (VIEWS.indexOf(v) < 0) v = 'dash';
     if (v === 'letter' && !S.openId) v = 'list';
     S.view = v;
-    $('tabs').querySelectorAll('.tab-btn').forEach(function (b) { b.classList.toggle('active', b.dataset.view === v); });
+    if (isSetView(v)) lastSetView = v;
+    const tabOf = isSetView(v) ? 'settings' : v;
+    $('tabs').querySelectorAll('.tab-btn').forEach(function (b) { b.classList.toggle('active', b.dataset.view === tabOf); });
     document.querySelectorAll('.view').forEach(function (s) { s.classList.toggle('active', s.id === 'view-' + v); });
     $('main').classList.toggle('wide', v === 'letter');
     if (!noHist) try { history.replaceState(null, '', '#' + v); } catch (e) { /* ข้าม */ }
     A.render();
     window.scrollTo(0, 0);
-  };
-  const PAGE_HEAD = {
-    dash: ['ภาพรวม', 'สรุปงานค้างและสิ่งที่ต้องทำวันนี้'],
-    list: ['ทะเบียนหนังสือรับ', 'ค้นหา กรอง และเปิดหนังสือรับทั้งหมด'],
-    out: ['หนังสือส่ง', 'ทะเบียนบันทึกข้อความและใบแยก'],
-    tpl: ['แนวทางเกษียณ', 'ข้อความใน { } ระบบเติมให้เอง'],
-    people: ['บุคลากร / ตำแหน่ง', 'ใช้เติมชื่อ-ตำแหน่งท้ายเกษียณ และคำว่า "เรียน ..."'],
-    printer: ['เครื่องพิมพ์', 'ปรับเทียบครั้งเดียวต่อเครื่อง'],
-    ai: ['AI ช่วยงาน', 'คุณเป็นผู้ตรวจและตัดสินใจขั้นสุดท้ายทุกครั้ง'],
-    guide: ['คู่มือ', 'วิธีใช้งานและตรวจตำแหน่งพิมพ์'],
-    settings: ['ตั้งค่า', 'ผู้ใช้งาน ถังขยะ และสำรองข้อมูล']
   };
   let renderTimer = null;
   A.scheduleRender = function () { clearTimeout(renderTimer); renderTimer = setTimeout(A.render, 60); };
@@ -263,10 +274,14 @@
     if (f) {
       const el = $('view-' + S.view);
       f(el);
-      // หัวหน้าแท็บ (แบบ A) — ไม่ใส่ตอนกำลังแก้หนังสือส่ง
-      const h = PAGE_HEAD[S.view];
-      if (h && !el.querySelector('#ofForm') && !el.querySelector('.pagehead')) {
-        el.insertAdjacentHTML('afterbegin', '<div class="pagehead"><h2>' + h[0] + '</h2><p>' + h[1] + '</p></div>');
+      // หน้าในแท็บตั้งค่า: หัวเรื่องเดียวกัน + แถบย่อย · หน้าอื่นสร้างหัวของตัวเอง
+      if (isSetView(S.view)) {
+        el.insertAdjacentHTML('afterbegin', A.pageHead('ตั้งค่า') + '<div class="setnav">' + SET_NAV.map(function (x) {
+          return '<button class="' + (x[0] === S.view ? 'on' : '') + '" data-set="' + x[0] + '">' + x[1] + '</button>';
+        }).join('') + '</div>');
+        el.querySelectorAll('[data-set]').forEach(function (b) { b.onclick = function () { A.go(b.dataset.set); }; });
+      } else if (S.view === 'guide' && !el.querySelector('.pagehead')) {
+        el.insertAdjacentHTML('afterbegin', A.pageHead('คู่มือ', 'วิธีใช้งานและการพิมพ์ให้ตรงตำแหน่ง'));
       }
     }
     const n = A.letters().filter(function (l) { const d = A.dueInfo(l); return d && d.d <= 0; }).length;
@@ -279,19 +294,19 @@
     let files = [];
     const m = A.modal({
       title: 'รับหนังสือใหม่', size: '',
-      body: '<div class="drop" id="nlDrop"><b>ลากไฟล์มาวาง หรือคลิกเพื่อเลือก</b><br><span class="small">PDF 1 ไฟล์ หรือภาพสแกน/ภาพถ่ายหลายหน้า (JPG/PNG) · ไม่เกิน 10 MB ต่อไฟล์</span>' +
+      body: '<div class="drop" id="nlDrop"><b>ลากไฟล์มาวาง หรือคลิกเพื่อเลือก</b><br><span class="small">PDF 1 ไฟล์ หรือภาพหลายหน้า (JPG/PNG) · ไม่เกิน 10 MB ต่อไฟล์</span>' +
         '<input type="file" id="nlFile" accept="application/pdf,image/*" multiple style="display:none"></div>' +
         '<div id="nlList" class="small" style="margin:8px 0 14px"></div>' +
         '<div class="grid grid-3"><div class="field"><label>เลขทะเบียนรับ</label><input id="nlReg" value="' + esc(A.nextRegNo()) + '"></div>' +
         '<div class="field"><label>วันที่รับ</label><input type="date" id="nlDate" value="' + U.today() + '"></div>' +
         '<div class="field"><label>ความเร่งด่วน</label><select id="nlUrg">' + A.opts(D.URGENCY, 'ปกติ') + '</select></div>' +
-        '<div class="field span-all"><label>เรื่อง (เว้นว่างได้ — ระบบ/AI อ่านให้)</label><input id="nlSubj"></div></div>' +
-        '<p class="hint" style="margin-top:10px">💡 สแกนต้นฉบับ<b>ทันทีที่รับ</b> (ก่อนเขียน/พิมพ์เกษียณใด ๆ) ขนาด A4 100% ความละเอียด 200–300 dpi — ระบบใช้ภาพนี้หาพื้นที่ว่างและตรวจการพิมพ์ทับ</p>',
+        '<div class="field span-all"><label>เรื่อง (เว้นว่างได้ ระบบอ่านให้)</label><input id="nlSubj"></div></div>' +
+        '<p class="hint" style="margin-top:10px">สแกนทันทีที่รับ ก่อนเขียนเกษียณ · A4 100% · 200–300 dpi</p>',
       foot: '<button class="btn btn-outline" data-close>ยกเลิก</button><button class="btn btn-primary" id="nlOk">บันทึกและเปิดหนังสือ</button>'
     });
     const drop = m.q('#nlDrop'), inp = m.q('#nlFile');
     function show() {
-      m.q('#nlList').innerHTML = files.map(function (f) { return '📄 ' + esc(f.name) + ' (' + U.fmtBytes(f.size) + ')'; }).join('<br>');
+      m.q('#nlList').innerHTML = files.map(function (f) { return esc(f.name) + ' (' + U.fmtBytes(f.size) + ')'; }).join('<br>');
     }
     function add(list) {
       [].forEach.call(list, function (f) {
@@ -341,44 +356,57 @@
   A.views.dash = function (el) {
     const L = A.letters();
     const open = L.filter(A.isOpen);
-    const over = open.filter(function (l) { const d = A.dueInfo(l); return d && d.d < 0; });
-    const soon = open.filter(function (l) { const d = A.dueInfo(l); return d && d.d >= 0 && d.d <= 3; });
+    const byDue = function (a, b) { return A.dueInfo(a).d - A.dueInfo(b).d; };
+    const over = open.filter(function (l) { const d = A.dueInfo(l); return d && d.d < 0; }).sort(byDue);
+    const soon = open.filter(function (l) { const d = A.dueInfo(l); return d && d.d >= 0 && d.d <= 3; }).sort(byDue);
     const mon = U.today().slice(0, 7);
     const thisMonth = L.filter(function (l) { return (l.receivedDate || '').slice(0, 7) === mon; });
-    const alerts = [];
-    over.forEach(function (l) { alerts.push(['bad', '⛔', 'เกินกำหนด: ' + (l.subject || l.regNo) + ' (' + A.dueInfo(l).text + ')', l.id]); });
-    soon.forEach(function (l) { alerts.push(['warn', '⏰', 'ใกล้ครบกำหนด: ' + (l.subject || l.regNo) + ' (' + A.dueInfo(l).text + ')', l.id]); });
-    if (A.people().some(function (p) { return !p.name; })) alerts.push(['info', '👤', 'ยังไม่ได้กรอกชื่อบุคลากรบางตำแหน่ง — กรอกที่แท็บ "บุคลากร/ตำแหน่ง" เพื่อให้ชื่อ-ตำแหน่งในเกษียณถูกต้อง', 'people']);
-    if (!A.me()) alerts.push(['info', '🔗', 'บัญชี "' + FBL.user.name + '" ยังไม่ได้ผูกกับบุคลากร — ผูกที่แท็บ "บุคลากร/ตำแหน่ง" ช่อง "ผู้ใช้ระบบ" ระบบจะเลือกชื่อ-ตำแหน่งผู้ลงนามให้อัตโนมัติ', 'people']);
-    if (!EN.printerCfg().calibratedAt) alerts.push(['warn', '🖨️', 'เครื่องพิมพ์ของคอมพิวเตอร์เครื่องนี้ยังไม่ได้ปรับเทียบตำแหน่ง — ทำครั้งเดียวที่แท็บ "เครื่องพิมพ์"', 'printer']);
-    if (!AI.ready()) alerts.push(['info', '🤖', 'ยังไม่ได้เปิดใช้ AI (ไม่บังคับ) — ระบบยังอ่านข้อความ/QR ได้เอง ดูประโยชน์ของ AI ที่แท็บ "AI ช่วยงาน"', 'ai']);
+    const urgent = over.concat(soon);
+    const setup = [];
+    if (A.people().some(function (p) { return !p.name; })) setup.push(['กรอกชื่อบุคลากร', 'ใช้ท้ายเกษียณ', 'people']);
+    if (!A.me()) setup.push(['ผูกบัญชีกับบุคลากร', 'ให้ระบบเลือกผู้ลงนามเอง', 'people']);
+    if (!EN.printerCfg().calibratedAt) setup.push(['ปรับเทียบเครื่องพิมพ์', 'ทำครั้งเดียวต่อเครื่อง', 'printer']);
+    if (!AI.ready()) setup.push(['เปิดใช้ AI', 'ไม่บังคับ', 'ai']);
     const recent = L.slice().sort(function (a, b) { return String(b.createdAt || '').localeCompare(String(a.createdAt || '')); }).slice(0, 8);
-    el.innerHTML =
+    const urgentHtml = urgent.length ? urgent.slice(0, 6).map(function (l) {
+      const d = A.dueInfo(l);
+      return '<button class="todo" data-open="' + esc(l.id) + '"><span class="todo-tx"><b>' + esc(l.subject || '(ยังไม่ได้อ่านเรื่อง)') + '</b><small>' + esc(l.regNo || '') + (l.from ? ' · ' + esc(l.from) : '') + '</small></span>' +
+        '<span class="badge ' + d.cls + '">' + esc(d.text) + '</span>' + A.ic('chev') + '</button>';
+    }).join('') + (urgent.length > 6 ? '<button class="link-more" data-kpi="open">ดูอีก ' + (urgent.length - 6) + ' ฉบับ</button>' : '')
+      : '<div class="all-clear">' + A.ic('check') + '<span>ไม่มีงานเร่งด่วน</span></div>';
+    el.innerHTML = A.pageHead('ภาพรวม', esc(U.thDate(U.today(), 'long'))) +
       '<div class="kpis">' +
-      kpi('หนังสือรับเดือนนี้', thisMonth.length, 'ฉบับ') + kpi('ค้างดำเนินการ', open.length, 'ฉบับ') +
-      kpi('ใกล้ครบกำหนด (≤3 วัน)', soon.length, 'ฉบับ') + kpi('เกินกำหนด', over.length, 'ฉบับ') + '</div>' +
-      '<div class="split"><div class="card"><div class="section-title">หนังสือล่าสุด<span class="right"><button class="btn btn-sm btn-outline" data-go="list">ดูทั้งหมด</button></span></div>' +
-      (recent.length ? letterTable(recent, true) : '<div class="empty">ยังไม่มีหนังสือ — กด "+ รับหนังสือใหม่" ที่มุมขวาบน</div>') + '</div>' +
-      '<div class="card"><div class="section-title">สิ่งที่ต้องทำ / แจ้งเตือน</div><div class="alert-list">' +
-      (alerts.length ? alerts.map(function (a) {
-        return '<div class="alert ' + a[0] + '"><span class="ic">' + a[1] + '</span><span>' + esc(a[2]) + '</span><button class="btn btn-sm btn-outline go" data-open="' + esc(a[3]) + '">เปิด</button></div>';
-      }).join('') : '<div class="alert ok"><span class="ic">✅</span><span>ไม่มีงานค้างเร่งด่วน</span></div>') + '</div></div></div>';
+      kpi('รับเดือนนี้', thisMonth.length, '', 'info', 'inbox') +
+      kpi('ค้างดำเนินการ', open.length, '', 'brand', 'stack', 'open') +
+      kpi('ใกล้ครบกำหนด', soon.length, 'ภายใน 3 วัน', 'warn', 'clock', 'soon') +
+      kpi('เกินกำหนด', over.length, '', 'bad', 'alert', 'late') + '</div>' +
+      '<div class="split"><div class="card card-flush"><div class="cf-head section-title">หนังสือล่าสุด<span class="right"><button class="btn btn-sm btn-outline" data-go="list">ดูทั้งหมด</button></span></div>' +
+      (recent.length ? letterTable(recent, true) : '<div class="empty">ยังไม่มีหนังสือ</div>') + '</div>' +
+      '<div class="card"><div class="section-title">สิ่งที่ต้องทำ' + (urgent.length ? '<span class="count-pill">' + urgent.length + '</span>' : '') + '</div><div class="todo-list">' + urgentHtml + '</div>' +
+      (setup.length ? '<div class="setup-h">ตั้งค่าให้ครบ</div><div class="setup-list">' + setup.map(function (s) {
+        return '<button class="setup" data-open="' + s[2] + '"><span><b>' + esc(s[0]) + '</b> <small>' + esc(s[1]) + '</small></span>' + A.ic('chev') + '</button>';
+      }).join('') + '</div>' : '') + '</div></div>';
     bindCommon(el);
   };
-  function kpi(lb, n, unit) { return '<div class="kpi"><div class="lb">' + lb + '</div><div class="big">' + n + ' <small class="sm">' + unit + '</small></div></div>'; }
+  function kpi(lb, n, sub, tone, icon, st) {
+    const tag = st ? 'button' : 'div';
+    return '<' + tag + ' class="kpi kpi-' + tone + (n ? ' has' : '') + '"' + (st ? ' data-kpi="' + st + '" title="ดูรายการ"' : '') + '>' +
+      '<span class="kpi-ic">' + A.ic(icon) + '</span><span class="kpi-tx"><span class="lb">' + lb + (sub ? ' <small>' + sub + '</small>' : '') + '</span>' +
+      '<span class="big num">' + n + '<small>ฉบับ</small></span></span></' + tag + '>';
+  }
   function letterTable(rows, compact) {
-    return '<div class="table-wrap"><table class="data"><thead><tr><th>เลขรับ</th>' + (compact ? '' : '<th>วันที่รับ</th><th>ที่ / ลงวันที่</th><th>จาก</th>') +
+    return '<div class="table-wrap"><table class="data' + (compact ? '' : ' wide') + '"><thead><tr><th>เลขรับ</th>' + (compact ? '' : '<th>วันที่รับ</th><th>ที่ / ลงวันที่</th><th>จาก</th>') +
       '<th>เรื่อง</th><th>กำหนด</th>' + (compact ? '' : '<th>ผู้รับผิดชอบ</th>') + '<th>สถานะ</th>' + (compact ? '' : '<th></th>') + '</tr></thead><tbody>' +
       rows.map(function (l) {
         const due = A.dueInfo(l);
         const asg = A.person(l.assigneeId);
-        return '<tr class="clickable" data-open="' + esc(l.id) + '"><td class="nowrap">' + esc(l.regNo || '') + '</td>' +
-          (compact ? '' : '<td class="nowrap">' + esc(U.thDate(l.receivedDate, 'short')) + '</td><td class="small">' + esc(l.docNo || '') + '<br><span class="muted">' + esc(U.thDate(l.docDate, 'short')) + '</span></td><td class="small">' + esc(l.from || '') + '</td>') +
-          '<td>' + A.urgBadge(l.urgency) + ' ' + esc(l.subject || '(ยังไม่ได้อ่านเรื่อง)') + ((l.links || []).length ? ' <span class="badge b-info" title="มี QR/ลิงก์">🔗 ' + l.links.length + '</span>' : '') + '</td>' +
-          '<td class="nowrap">' + (due ? '<span class="badge ' + due.cls + '">' + (l.dueKind ? esc(l.dueKind) + ' · ' : '') + esc(due.text) + '</span>' : (l.dueDate ? '<span class="muted small">' + esc(U.thDate(l.dueDate, 'short')) + '</span>' : (!compact && A.isOpen(l) ? '<span class="badge b-mute" title="ไม่มีวันกำหนด ระบบจะไม่เตือนทาง LINE">ไม่มีกำหนด</span>' : ''))) + '</td>' +
+        return '<tr class="clickable" data-open="' + esc(l.id) + '"><td class="nowrap num strong">' + esc(l.regNo || '') + '</td>' +
+          (compact ? '' : '<td class="nowrap">' + esc(U.thDate(l.receivedDate, 'short')) + '</td><td class="small nowrap">' + esc(l.docNo || '') + '<br><span class="muted">' + esc(U.thDate(l.docDate, 'short')) + '</span></td><td class="small">' + esc(l.from || '') + '</td>') +
+          '<td class="subj">' + A.urgBadge(l.urgency) + ' ' + (l.subject ? esc(l.subject) : '<span class="muted">(ยังไม่ได้อ่านเรื่อง)</span>') + ((l.links || []).length ? ' <span class="badge b-info b-ic" title="มี QR/ลิงก์">' + A.ic('link') + l.links.length + '</span>' : '') + '</td>' +
+          '<td class="nowrap">' + (due ? '<span class="badge ' + due.cls + '">' + (l.dueKind ? esc(l.dueKind) + ' · ' : '') + esc(due.text) + '</span>' : (l.dueDate ? '<span class="muted small">' + esc(U.thDate(l.dueDate, 'short')) + '</span>' : (!compact && A.isOpen(l) ? '<span class="muted small" title="ไม่มีวันกำหนด ระบบจะไม่เตือนทาง LINE">ไม่มีกำหนด</span>' : ''))) + '</td>' +
           (compact ? '' : '<td class="small">' + esc(asg ? A.fullName(asg) || asg.position : '') + '</td>') +
-          '<td>' + A.statusBadge(l.status) + '</td>' +
-          (compact ? '' : '<td class="nowrap">' + (A.isOpen(l) ? '<button class="btn btn-sm btn-outline" data-done="' + esc(l.id) + '">เสร็จแล้ว</button>' : '') + '</td>') + '</tr>';
+          '<td class="nowrap">' + A.statusBadge(l.status) + '</td>' +
+          (compact ? '' : '<td class="nowrap r">' + (A.isOpen(l) ? '<button class="btn btn-sm btn-outline" data-done="' + esc(l.id) + '">เสร็จแล้ว</button>' : '') + '</td>') + '</tr>';
       }).join('') + '</tbody></table></div>';
   }
   // ปิดเรื่อง: เปลี่ยนสถานะเป็น "ดำเนินการแล้ว" (การเตือนทาง LINE จะหยุดตั้งแต่รอบถัดไป)
@@ -406,37 +434,39 @@
       if (b.tagName === 'TR') b.ondblclick = openIt; else b.onclick = openIt; // แถวในตาราง: ดับเบิลคลิกถึงจะเปิด
     });
     el.querySelectorAll('[data-go]').forEach(function (b) { b.onclick = function () { A.go(b.dataset.go); }; });
+    el.querySelectorAll('[data-kpi]').forEach(function (b) { b.onclick = function () { S.ui.st = b.dataset.kpi; S.ui.q = ''; A.go('list'); }; });
   }
 
   /* ======================= ทะเบียนหนังสือรับ ======================= */
   A.views.list = function (el) {
     const ui = S.ui;
+    const isLate = function (l) { const d = A.dueInfo(l); return d && d.d < 0; };
+    const isSoon = function (l) { const d = A.dueInfo(l); return d && d.d >= 0 && d.d <= 3; };
     let rows = A.letters();
     if (ui.st === 'open') rows = rows.filter(A.isOpen);
-    else if (ui.st === 'late') rows = rows.filter(function (l) { const d = A.dueInfo(l); return d && d.d < 0; });
+    else if (ui.st === 'late') rows = rows.filter(isLate);
+    else if (ui.st === 'soon') rows = rows.filter(isSoon);
     else if (ui.st && ui.st !== 'all') rows = rows.filter(function (l) { return l.status === ui.st; });
     if (ui.q) {
       const q = ui.q.toLowerCase();
       rows = rows.filter(function (l) { return [l.regNo, l.docNo, l.subject, l.from, l.summary].join(' ').toLowerCase().indexOf(q) >= 0; });
     }
     rows.sort(function (a, b) { return String(b.receivedDate || '').localeCompare(String(a.receivedDate || '')) || String(b.createdAt || '').localeCompare(String(a.createdAt || '')); });
-    const stOpts = [{ key: 'open', name: 'ค้างดำเนินการ' }, { key: 'late', name: 'เกินกำหนด' }, { key: 'all', name: 'ทั้งหมด' }]
-      .concat(Object.keys(D.STATUS).map(function (k) { return { key: k, name: D.STATUS[k].name }; }));
-    el.innerHTML = '<div class="card"><div class="section-title">ทะเบียนหนังสือรับ <span class="sub">' + rows.length + ' ฉบับ</span>' +
-      '<span class="right"><button class="btn btn-sm btn-outline" id="lsCsv">ส่งออก CSV</button><button class="btn btn-sm btn-primary" id="lsNew">+ รับหนังสือใหม่</button></span></div>' +
-      '<div class="toolbar"><input class="inp grow" id="lsQ" placeholder="ค้นหา เลขรับ / ที่ / เรื่อง / ผู้ส่ง" value="' + esc(ui.q) + '"><select class="inp" id="lsSt">' + A.opts(stOpts, ui.st) + '</select></div>' +
-      '<div style="margin-bottom:10px">' + [['open', 'ค้างดำเนินการ'], ['late', 'เกินกำหนด'], ['done', 'ดำเนินการแล้ว'], ['all', 'ทั้งหมด']].map(function (c) {
-        const all = A.letters();
-        const n = c[0] === 'open' ? all.filter(A.isOpen).length : c[0] === 'late' ? all.filter(function (l) { const d = A.dueInfo(l); return d && d.d < 0; }).length : c[0] === 'all' ? all.length : all.filter(function (l) { return l.status === c[0]; }).length;
-        return '<span class="chip' + (ui.st === c[0] ? ' active' : '') + '" data-chip="' + c[0] + '">' + c[1] + ' <b>' + n + '</b></span>';
+    const all = A.letters();
+    const segs = [['open', 'ค้างดำเนินการ', all.filter(A.isOpen).length], ['soon', 'ใกล้ครบกำหนด', all.filter(isSoon).length], ['late', 'เกินกำหนด', all.filter(isLate).length, 'hot'], ['all', 'ทั้งหมด', all.length]];
+    const stKeys = Object.keys(D.STATUS);
+    el.innerHTML = A.pageHead('ทะเบียนหนังสือรับ', rows.length + ' ฉบับ', '<button class="btn btn-sm btn-outline" id="lsCsv">ส่งออก CSV</button>') +
+      '<div class="card card-flush"><div class="filterbar"><div class="seg">' + segs.map(function (c) {
+        return '<button class="' + (ui.st === c[0] ? 'on' : '') + '" data-chip="' + c[0] + '">' + c[1] + ' <b class="num' + (c[3] && c[2] ? ' hot' : '') + '">' + c[2] + '</b></button>';
       }).join('') + '</div>' +
-      (rows.length ? letterTable(rows, false) : '<div class="empty">ไม่พบหนังสือ</div>') + '</div>';
+      '<select class="inp" id="lsSt"><option value="">ตามสถานะ…</option>' + stKeys.map(function (k) { return '<option value="' + k + '"' + (ui.st === k ? ' selected' : '') + '>' + D.STATUS[k].name + '</option>'; }).join('') + '</select>' +
+      '<input class="inp search" id="lsQ" placeholder="ค้นหาเลขรับ ที่ เรื่อง ผู้ส่ง" value="' + esc(ui.q) + '"></div>' +
+      (rows.length ? letterTable(rows, false) + '<div class="cf-foot">ดับเบิลคลิกแถวเพื่อเปิดหนังสือ</div>' : '<div class="empty">ไม่พบหนังสือ</div>') + '</div>';
     bindCommon(el);
     const q = el.querySelector('#lsQ');
     q.oninput = function () { ui.q = q.value; clearTimeout(q._t); q._t = setTimeout(function () { A.render(); const n = $('lsQ'); n.focus(); n.setSelectionRange(n.value.length, n.value.length); }, 300); };
-    el.querySelector('#lsSt').onchange = function () { ui.st = this.value; A.render(); };
+    el.querySelector('#lsSt').onchange = function () { ui.st = this.value || 'open'; A.render(); };
     el.querySelectorAll('[data-chip]').forEach(function (c) { c.onclick = function () { ui.st = c.dataset.chip; A.render(); }; });
-    el.querySelector('#lsNew').onclick = A.newLetterDialog;
     el.querySelector('#lsCsv').onclick = function () {
       const head = ['เลขรับ', 'วันที่รับ', 'ที่', 'ลงวันที่', 'จาก', 'เรื่อง', 'ความเร่งด่วน', 'กำหนดส่ง', 'ผู้รับผิดชอบ', 'สถานะ', 'สรุป', 'ลิงก์'];
       const lines = [head].concat(rows.map(function (l) {
@@ -468,16 +498,9 @@
     const T = A.templates();
     const can = A.can();
     if (!T.some(function (t) { return t.id === tpSel; })) { tpSel = T.length ? T[0].id : null; if (tpMode !== 'new') tpMode = 'view'; }
-    el.innerHTML = '<div class="card"><div class="section-title">แนวทางเกษียณหนังสือ <span class="sub">เลือกใช้ได้ในหน้าหนังสือ · ข้อความในวงเล็บ { } ระบบเติมให้เอง</span>' +
-      (can ? '<span class="right"><button class="btn btn-sm btn-outline" id="tpReset">คืนค่าเริ่มต้น</button><button class="btn btn-sm btn-primary" id="tpAdd">+ เพิ่มแนวทาง</button></span>' : '') + '</div>' +
-      '<p class="hint" style="margin-top:-6px">ตัวแทนที่ใช้ได้: {เรียน} {ผู้รับมอบ} {เรื่อง} {สรุป} {กำหนดส่ง} {จาก} {เลขที่} {ลงวันที่} {เลขที่ตอบ} — ชื่อ ตำแหน่ง และวันที่ของผู้ลงนาม ระบบใส่ท้ายข้อความให้อัตโนมัติ</p>' +
-      '<div class="pp-split"><div class="pp-list"><div class="pp-search"><input id="tpQ" placeholder="ค้นหาแนวทาง…" value="' + esc(tpQ) + '"></div><div id="tpList"></div></div><div class="pp-ed" id="tpDet"></div></div></div>' +
-      '<div class="card guide"><div class="section-title">หลักการเขียนเกษียณหนังสือ (ย่อ)</div><ul>' +
-      '<li><b>เกษียณเสนอ</b> ขึ้นต้น "เรียน" ตามด้วยตำแหน่งผู้บังคับบัญชา (ใช้ชื่อย่อตำแหน่งได้ เช่น ผอ.ขท.ระยอง) แล้วสรุปเรื่องสั้น ๆ + สิ่งที่ขอให้พิจารณา</li>' +
-      '<li><b>เกษียณสั่งการ</b> สั้น ชัด ระบุผู้รับมอบ และกำหนดเวลา เช่น "ทราบ มอบ นายช่าง ... ดำเนินการ และรายงานภายในวันที่ ..."</li>' +
-      '<li><b>เกษียณรายงานผล</b> บอกว่าดำเนินการอย่างไร เมื่อไร อ้างเลขหนังสือตอบถ้ามี</li>' +
-      '<li>ทุกเกษียณต้องมี ลายมือชื่อ · (ชื่อเต็ม) · ตำแหน่ง · วัน เดือน ปี — ระบบเว้นที่ให้เซ็นชื่อด้วยปากกาหลังพิมพ์</li>' +
-      '<li>เขียน/พิมพ์ในที่ว่างของหนังสือ ไม่ทับข้อความเดิม ถ้าที่ไม่พอให้ใช้ <b>แผ่นเกษียณต่อ</b> แนบท้าย (ระบบพิมพ์ให้ได้)</li></ul></div>';
+    el.innerHTML = A.pageHead('แนวทางเกษียณ', 'ข้อความใน { } ระบบเติมให้เอง · ชื่อ ตำแหน่ง และวันที่ของผู้ลงนามใส่ท้ายข้อความอัตโนมัติ',
+        can ? '<button class="btn btn-sm btn-outline" id="tpReset">คืนค่าเริ่มต้น</button><button class="btn btn-sm btn-primary" id="tpAdd">+ เพิ่มแนวทาง</button>' : '') +
+      '<div class="pp-split"><div class="pp-list"><div class="pp-search"><input id="tpQ" placeholder="ค้นหาแนวทาง" value="' + esc(tpQ) + '"></div><div id="tpList" class="pp-scroll"></div></div><div class="pp-ed" id="tpDet"></div></div>';
 
     function paintList() {
       const q = tpQ.trim();
@@ -506,7 +529,7 @@
       d.innerHTML = '<div class="pp-eh"><h3>' + (t ? 'แก้ไข: ' + esc(t.title) : 'เพิ่มแนวทางเกษียณ') + '</h3></div>' +
         '<div class="grid grid-2" style="margin-top:12px"><div class="field"><label>ใช้เมื่อ</label><select id="tgG">' + A.opts(Object.keys(D.GROUPS).map(function (k) { return { key: k, name: D.GROUPS[k] }; }), t ? t.group : tpNewGroup) + '</select></div>' +
         '<div class="field"><label>ชื่อแนวทาง</label><input id="tgT" value="' + esc(t ? t.title : '') + '"></div></div>' +
-        '<div class="field" style="margin-top:10px"><label>ข้อความ <span class="hint">(เว้นวรรคหน้าบรรทัด 5 ช่อง = ย่อหน้า · กดปุ่มเหลืองเพื่อแทรกตัวแทน)</span></label>' +
+        '<div class="field" style="margin-top:10px"><label>ข้อความ <span class="hint">(เว้นวรรค 5 ช่อง = ย่อหน้า · กดปุ่มเหลืองเพื่อแทรก)</span></label>' +
         '<div class="tp-bar">' + TP_PH.map(function (k) { return '<button type="button" class="tp-phb" data-k="' + k + '">{' + k + '}</button>'; }).join('') + '</div>' +
         '<textarea id="tgX" rows="6">' + esc(t ? t.text : 'เรียน {เรียน}\n     ') + '</textarea></div>' +
         '<div class="pp-sec">ตัวอย่างที่ได้</div><div class="tp-memo" id="tgP"></div>' +
@@ -532,16 +555,11 @@
       const t = T.find(function (x) { return x.id === tpSel; });
       if (!t) { d.innerHTML = '<div class="muted" style="padding:30px;text-align:center">ยังไม่มีแนวทาง — กด “+ เพิ่มแนวทาง”</div>'; return; }
       if (tpMode === 'edit' && can) return paintEditor(t);
-      const used = [];
-      (t.text.match(/\{([^}]+)\}/g) || []).forEach(function (m) { const k = m.slice(1, -1); if (used.indexOf(k) < 0) used.push(k); });
       d.innerHTML = '<div class="pp-eh"><h3>' + esc(t.title) + '</h3>' +
         (can ? '<span class="flex"><button class="btn btn-sm btn-outline" id="tpEd">แก้ไข</button><button class="btn btn-sm btn-danger" id="tpDel">ลบ</button></span>' : '') + '</div>' +
         '<div class="muted small" style="margin-top:2px">' + esc(D.GROUPS[t.group] || '') + '</div>' +
         '<div class="pp-sec">ข้อความแนวทาง</div><div class="tp-raw">' + tpFmt(t.text, false) + '</div>' +
-        '<div class="pp-sec">ตัวอย่างเมื่อใช้งานจริง</div><div class="tp-memo">' + tpFmt(t.text, true) + '</div>' +
-        '<div class="pp-sec">ตัวแทนที่ระบบเติมให้</div>' + (used.length ? '<div class="tp-used">' + used.map(function (k) {
-          return '<span><span class="tp-ph">{' + esc(k) + '}</span></span><span>' + esc(TP_SAMPLE[k] || '(ตัวแทนที่ไม่รู้จัก)') + '</span>';
-        }).join('') + '</div>' : '<div class="muted small">แนวทางนี้ไม่มีตัวแทน — ข้อความเดิมทุกครั้ง</div>');
+        '<div class="pp-sec">ตัวอย่างเมื่อใช้งานจริง</div><div class="tp-memo">' + tpFmt(t.text, true) + '</div>';
       if (!can) return;
       d.querySelector('#tpEd').onclick = function () { tpMode = 'edit'; paintDet(); };
       d.querySelector('#tpDel').onclick = async function () {
@@ -580,18 +598,16 @@
     const nm = function (p) { return ((p.prefix || '') + (p.name || '')).trim() || '(ยังไม่ระบุชื่อ)'; };
     const dirty = function () { return JSON.stringify(P) !== ppBase; };
 
-    el.innerHTML = '<div class="card"><div class="section-title">บุคลากร / ตำแหน่ง ตามบทบาทหน้าที่' +
-      '<span class="sub">ใช้เติมชื่อ-ตำแหน่งท้ายเกษียณ และคำว่า "เรียน ..." ให้ถูกต้องตามสายบังคับบัญชา · เลือกชื่อทางซ้าย แล้วแก้ไขทางขวา</span>' +
-      (can ? '<span class="right"><button class="btn btn-sm btn-primary" id="ppAdd">+ เพิ่มบุคลากร</button></span>' : '') + '</div>' +
-      '<div class="pp-split"><div class="pp-list"><div class="pp-search"><input id="ppQ" placeholder="🔍 ค้นหาชื่อ / ตำแหน่ง" value="' + esc(ppQ) + '"></div><div id="ppLs"></div></div>' +
+    el.innerHTML = '<div class="sec-head"><p class="hint">ใช้เติมชื่อ-ตำแหน่งท้ายเกษียณ และคำว่า "เรียน ..." ตามสายบังคับบัญชา</p><div class="flex">' +
+      (can ? '<span class="dirty-note" id="ppDirty"></span><button class="btn btn-sm btn-outline" id="ppAdd">+ เพิ่มบุคลากร</button><button class="btn btn-sm btn-primary" id="ppSave">บันทึกรายชื่อ</button>' : '<span class="hint">แก้ไขได้เฉพาะเจ้าของระบบหรือผู้ดูแลระบบ</span>') + '</div></div>' +
+      '<div class="pp-split"><div class="pp-list"><div class="pp-search"><input id="ppQ" placeholder="ค้นหาชื่อ / ตำแหน่ง" value="' + esc(ppQ) + '"></div><div id="ppLs" class="pp-scroll"></div></div>' +
       '<div class="pp-ed" id="ppEd"></div></div>' +
-      '<div class="flex" style="margin-top:12px">' + (can ? '<button class="btn btn-primary" id="ppSave">บันทึกรายชื่อ</button><span class="hint" id="ppDirty"></span>' : '<span class="hint">แก้ไขได้เฉพาะเจ้าของระบบหรือผู้ดูแลระบบ</span>') + '</div></div>' +
-      '<div class="card guide"><div class="section-title">บทบาทหน้าที่ในการเกษียณหนังสือ</div><div class="table-wrap"><table class="data"><thead><tr><th>บทบาท</th><th>หน้าที่</th><th>แนวทางเกษียณที่ใช้</th></tr></thead><tbody>' +
-      roleKeys.map(function (k) { const r = D.ROLES[k]; return '<tr><td><b>' + esc(r.name) + '</b></td><td>' + esc(r.does) + '</td><td>' + esc(D.GROUPS[r.group]) + '</td></tr>'; }).join('') +
-      '</tbody></table></div><p class="hint">"ผู้ใช้ระบบ" = ผูกบัญชีล็อกอินกับบุคลากร เมื่อบุคคลนั้นเปิดหน้าเกษียณ ระบบจะเลือกชื่อ-ตำแหน่งและแนวทางตามบทบาทให้ทันที</p></div>';
+      '<details class="fold"><summary>บทบาทหน้าที่ในการเกษียณ</summary><div class="table-wrap"><table class="data"><thead><tr><th>บทบาท</th><th>หน้าที่</th><th>แนวทางที่ใช้</th></tr></thead><tbody>' +
+      roleKeys.map(function (k) { const r = D.ROLES[k]; return '<tr><td class="nowrap"><b>' + esc(r.name) + '</b></td><td>' + esc(r.does) + '</td><td>' + esc(D.GROUPS[r.group]) + '</td></tr>'; }).join('') +
+      '</tbody></table></div></details>';
 
     const ls = el.querySelector('#ppLs'), ed = el.querySelector('#ppEd');
-    function paintDirty() { const d = el.querySelector('#ppDirty'); if (d) d.textContent = dirty() ? '● มีการแก้ไขที่ยังไม่บันทึก' : 'แก้ได้เฉพาะเจ้าของระบบ/ผู้ดูแลระบบ'; }
+    function paintDirty() { const d = el.querySelector('#ppDirty'); if (d) d.textContent = dirty() ? 'ยังไม่บันทึก' : ''; }
     function paintList() {
       const q = ppQ.trim();
       const m = P.filter(function (p) { return !q || (nm(p) + (p.position || '') + (p.abbr || '')).indexOf(q) >= 0; });
@@ -620,7 +636,7 @@
         '<div class="pp-sec">บทบาท และสายบังคับบัญชา</div><div class="grid grid-2">' +
         '<div class="field"><label>บทบาท</label><select data-f="role"' + dis + '>' + A.opts(roleOpts, p.role) + '</select></div>' +
         '<div class="field"><label>เสนอถึง (ผู้บังคับบัญชา)</label><select data-f="reportsTo"' + dis + '>' + A.opts(P.filter(function (x) { return x.id !== p.id; }).map(function (x) { return { key: x.id, name: lbl(x) }; }), p.reportsTo, '— ไม่มี —') + '</select></div>' +
-        '<div class="field span-all"><label>ผู้ใช้ระบบ (ผูกบัญชีล็อกอิน)</label><select data-f="loginName"' + dis + '>' + A.opts(S.team.map(function (t) { return t.name; }), p.loginName, '— ไม่ผูก —') + '</select></div></div>' +
+        '<div class="field span-all"><label>ผู้ใช้ระบบ (ผูกบัญชีล็อกอิน ให้ระบบเลือกผู้ลงนามเอง)</label><select data-f="loginName"' + dis + '>' + A.opts(S.team.map(function (t) { return t.name; }), p.loginName, '— ไม่ผูก —') + '</select></div></div>' +
         '<div class="pp-sec">ตัวอย่างที่จะปรากฏในเกษียณ</div><div class="pp-prev" id="ppPrev">' + previewHtml(p) + '</div>' +
         (can ? '<div class="flex" style="margin-top:14px"><button class="btn btn-sm btn-danger" id="ppDel" style="margin-left:auto">ลบคนนี้</button></div>' : '');
     }
@@ -676,27 +692,26 @@
   /* ======================= เครื่องพิมพ์ (ปรับเทียบ) ======================= */
   A.views.printer = function (el) {
     const p = EN.printerCfg();
-    const fonts = D.FONTS.map(function (f) { return '<li>' + esc(f.key) + ' — ' + (EN.fontInstalled(f.key) ? '<span class="badge b-ok">มีในเครื่องนี้</span>' : '<span class="badge b-mute">ไม่มี</span>') + '</li>'; }).join('');
-    el.innerHTML = '<div class="split"><div class="card"><div class="section-title">ปรับเทียบเครื่องพิมพ์ <span class="sub">ทำครั้งเดียวต่อเครื่องพิมพ์ ค่าเก็บในคอมพิวเตอร์เครื่องนี้</span></div>' +
+    const fonts = D.FONTS.map(function (f) { return '<li><span>' + esc(f.key) + '</span>' + (EN.fontInstalled(f.key) ? '<span class="badge b-ok">มี</span>' : '<span class="badge b-mute">ไม่มี</span>') + '</li>'; }).join('');
+    el.innerHTML = '<div class="split"><div class="card"><div class="section-title">ปรับเทียบเครื่องพิมพ์ <span class="sub">ทำครั้งเดียวต่อเครื่อง · เก็บในคอมพิวเตอร์นี้</span></div>' +
       '<div class="steps">' +
-      '<div class="st"><div><b>พิมพ์หน้าปรับเทียบ</b> บนกระดาษ A4 เปล่า <br><span class="hint">ในหน้าต่างพิมพ์ของ Chrome/Edge: ขนาดกระดาษ A4 · ระยะขอบ "ไม่มี" หรือ "ค่าเริ่มต้น" · มาตราส่วน 100% (ห้าม "พอดีกับหน้า") · ปิด "ส่วนหัวและส่วนท้าย"</span><br>' +
-      '<button class="btn btn-sm btn-outline" id="prCal" style="margin-top:6px">🖨️ พิมพ์หน้าปรับเทียบ</button></div></div>' +
-      '<div class="st"><div><b>วัดด้วยไม้บรรทัด</b> จากขอบซ้ายและขอบบนของกระดาษ ถึงจุดตัดกากบาท A และ B แล้วกรอกค่าที่วัดได้ (มม.)' +
-      '<div class="grid grid-4" style="margin-top:8px"><div class="field"><label>A ห่างซ้าย</label><input type="number" step="0.5" id="prAx" value="20"></div><div class="field"><label>A ห่างบน</label><input type="number" step="0.5" id="prAy" value="20"></div>' +
+      '<div class="st"><div><b>พิมพ์หน้าปรับเทียบบน A4 เปล่า</b><p class="hint st-h">ระยะขอบ "ไม่มี" · มาตราส่วน 100% · ปิดส่วนหัว/ท้าย</p>' +
+      '<button class="btn btn-sm btn-outline" id="prCal">พิมพ์หน้าปรับเทียบ</button></div></div>' +
+      '<div class="st"><div><b>วัดจุดกากบาท A และ B (มม.)</b><p class="hint st-h">วัดจากขอบซ้ายและขอบบนของกระดาษ</p>' +
+      '<div class="grid grid-4"><div class="field"><label>A ห่างซ้าย</label><input type="number" step="0.5" id="prAx" value="20"></div><div class="field"><label>A ห่างบน</label><input type="number" step="0.5" id="prAy" value="20"></div>' +
       '<div class="field"><label>B ห่างซ้าย</label><input type="number" step="0.5" id="prBx" value="190"></div><div class="field"><label>B ห่างบน</label><input type="number" step="0.5" id="prBy" value="277"></div></div></div></div>' +
-      '<div class="st"><div><b>บันทึกวิธีใส่กระดาษ</b> (ดูจากเครื่องหมาย ✗ ดินสอ) เช่น "ถาดมือ หน้าหงาย หัวกระดาษเข้าก่อน"' +
-      '<div class="grid grid-2" style="margin-top:8px"><div class="field"><label>ชื่อเครื่องพิมพ์</label><input id="prName" value="' + esc(p.name) + '" placeholder="เช่น Brother ห้องหมวด"></div>' +
-      '<div class="field"><label>วิธีใส่ต้นฉบับ</label><input id="prFeed" value="' + esc(p.feedNote) + '"></div></div></div></div></div>' +
-      '<div class="flex" style="margin-top:14px"><button class="btn btn-primary" id="prSave">คำนวณและบันทึก</button><button class="btn btn-outline" id="prReset">ล้างค่า</button></div></div>' +
-      '<div class="card"><div class="section-title">ค่าปัจจุบันของเครื่องนี้</div><dl class="kv">' +
+      '<div class="st"><div><b>จดวิธีใส่กระดาษ</b><p class="hint st-h">ดูจากเครื่องหมาย ✗ ดินสอบนแผ่นที่พิมพ์</p>' +
+      '<div class="grid grid-2"><div class="field"><label>ชื่อเครื่องพิมพ์</label><input id="prName" value="' + esc(p.name) + '" placeholder="เช่น Brother ห้องหมวด"></div>' +
+      '<div class="field"><label>วิธีใส่ต้นฉบับ</label><input id="prFeed" value="' + esc(p.feedNote) + '" placeholder="เช่น ถาดมือ หน้าหงาย หัวเข้าก่อน"></div></div></div></div></div>' +
+      '<div class="flex card-act"><button class="btn btn-primary" id="prSave">คำนวณและบันทึก</button><button class="btn btn-outline" id="prReset">ล้างค่า</button></div></div>' +
+      '<div class="card"><div class="section-title">ค่าปัจจุบัน' + (p.calibratedAt ? '' : '<span class="right"><span class="badge b-warn">ยังไม่ปรับเทียบ</span></span>') + '</div><dl class="kv">' +
       '<dt>เครื่องพิมพ์</dt><dd>' + esc(p.name || '—') + '</dd>' +
-      '<dt>เลื่อนแนวนอน</dt><dd>' + (+p.dx || 0).toFixed(1) + ' มม.</dd><dt>เลื่อนแนวตั้ง</dt><dd>' + (+p.dy || 0).toFixed(1) + ' มม.</dd>' +
-      '<dt>สเกล (กว้าง×สูง)</dt><dd>' + (+p.sx || 1).toFixed(4) + ' × ' + (+p.sy || 1).toFixed(4) + '</dd>' +
+      '<dt>เลื่อน (นอน × ตั้ง)</dt><dd class="num">' + (+p.dx || 0).toFixed(1) + ' × ' + (+p.dy || 0).toFixed(1) + ' มม.</dd>' +
+      '<dt>สเกล (กว้าง × สูง)</dt><dd class="num">' + (+p.sx || 1).toFixed(4) + ' × ' + (+p.sy || 1).toFixed(4) + '</dd>' +
       '<dt>วิธีใส่ต้นฉบับ</dt><dd>' + esc(p.feedNote || '—') + '</dd>' +
-      '<dt>ปรับเทียบเมื่อ</dt><dd>' + (p.calibratedAt ? esc(U.thDate(p.calibratedAt.slice(0, 10))) : '<span class="badge b-warn">ยังไม่ปรับเทียบ</span>') + '</dd></dl>' +
-      '<h4 style="margin:16px 0 6px;color:var(--brand-900)">แบบอักษรราชการในเครื่องนี้</h4><ul class="small" style="margin:0;padding-left:18px">' + fonts + '</ul>' +
-      '<p class="hint">ถ้าไม่มี TH SarabunIT๙ ให้ติดตั้งจากเว็บ สำนักงาน กพ./SIPA (ฟอนต์แห่งชาติ) แล้วเปิดหน้าเว็บนี้ใหม่ — ระหว่างนี้ระบบใช้ Sarabun แทน</p>' +
-      '<p class="hint">หลังพิมพ์จริงแล้ว ใช้แท็บ "ตรวจหลังพิมพ์" ในหน้าหนังสือ ระบบวัดความคลาดเคลื่อนจากภาพสแกนและปรับค่านี้ให้อัตโนมัติ</p></div></div>';
+      '<dt>ปรับเทียบเมื่อ</dt><dd>' + (p.calibratedAt ? esc(U.thDate(p.calibratedAt.slice(0, 10))) : '—') + '</dd></dl>' +
+      '<div class="pp-sec">แบบอักษรราชการในเครื่องนี้</div><ul class="fontlist">' + fonts + '</ul>' +
+      '<p class="hint">ไม่มี TH SarabunIT๙ ให้ติดตั้งแล้วเปิดหน้าเว็บใหม่ ระหว่างนี้ระบบใช้ Sarabun แทน</p></div></div>';
     el.querySelector('#prCal').onclick = function () { EN.print('calib', {}); };
     el.querySelector('#prSave').onclick = function () {
       const ax = +$('prAx').value, ay = +$('prAy').value, bx = +$('prBx').value, by = +$('prBy').value;
@@ -712,32 +727,22 @@
   /* ======================= AI ช่วยงาน ======================= */
   A.views.ai = function (el) {
     const c = AI.cfg();
-    el.innerHTML = '<div class="pagehead"><h2>AI ช่วยงาน</h2><p>AI ทำงานต่อกันหลายขั้นตอนเอง ตั้งแต่อ่านหนังสือจนร่างเกษียณเสร็จ — <b>คุณเป็นผู้ตรวจและตัดสินใจขั้นสุดท้ายก่อนพิมพ์ทุกครั้ง</b></p></div>' +
-      '<div class="ai-grid"><div class="ai-main">' +
-      '<div class="card"><div class="section-title">AI Agent ทำอะไรให้บ้าง</div>' +
-      '<div class="ai-legend"><span><i style="background:#c3cad3"></i>ระบบ (ในเครื่อง)</span><span><i style="background:var(--acc,#1f5fbf)"></i>AI ช่วย 🤖</span><span><i style="background:var(--gold)"></i>คุณตัดสินใจ ✍️</span></div>' +
+    el.innerHTML = '<div class="alert warn ai-warn"><span class="ic">' + A.ic('alert') + '</span><span><b>ห้ามใช้กับหนังสือชั้นความลับหรือข้อมูลส่วนบุคคลอ่อนไหว</b> ไฟล์จะถูกส่งไปประมวลผลที่ Anthropic และ AI อาจผิดพลาดได้ ต้องตรวจทุกครั้ง</span></div>' +
+      '<div class="ai-grid"><div class="card"><div class="section-title">ตั้งค่า AI (Claude) <span class="sub">เก็บในเบราว์เซอร์เครื่องนี้เท่านั้น</span></div>' +
+      '<div class="field"><label>Anthropic API key</label>' + A.pwField('aiKey', 'sk-ant-...', 'off') + '<span class="hint">สร้างที่ console.anthropic.com · ไม่ใส่ก็ใช้ระบบได้ แค่ไม่มีฟังก์ชัน AI</span></div>' +
+      '<div class="field field-gap"><label>โมเดล</label><select id="aiModel">' + A.opts([{ key: 'claude-opus-5', name: 'Claude Opus 5 (แม่นยำที่สุด · แนะนำ)' }, { key: 'claude-sonnet-5', name: 'Claude Sonnet 5 (ประหยัดกว่า)' }, { key: 'claude-haiku-4-5', name: 'Claude Haiku 4.5 (ถูกและเร็วที่สุด)' }], c.model) + '</select></div>' +
+      '<div class="field field-gap"><label><input type="checkbox" id="aiAuto"' + (c.auto ? ' checked' : '') + '> วิเคราะห์ทันทีที่รับหนังสือใหม่ (ยกเว้นหนังสือลับ)</label></div>' +
+      '<div class="flex card-act"><button class="btn btn-primary" id="aiSave">บันทึก</button><button class="btn btn-outline" id="aiTest">ทดสอบ</button><button class="btn btn-ghost" id="aiClear">ลบ key</button></div></div>' +
+      '<div class="card"><div class="section-title">ขั้นตอนการทำงาน</div>' +
+      '<div class="ai-legend"><span><i style="background:#c3cad3"></i>ระบบ</span><span><i style="background:var(--acc)"></i>AI</span><span><i style="background:var(--gold)"></i>คุณตัดสินใจ</span></div>' +
       '<ol class="ai-tl">' +
-      '<li><span class="n">1</span><b>รับ</b><span>สแกน/อัปโหลดหนังสือ ลงทะเบียนรับ</span></li>' +
-      '<li><span class="n">2</span><b>อ่าน</b><span>ดึงข้อความ + OCR + สแกน QR ทุกหน้า (ทำในเครื่อง)</span></li>' +
-      '<li class="ai"><span class="n">3</span><b>วิเคราะห์ 🤖</b><span>สรุปเรื่อง ประเด็น สิ่งที่ต้องทำ กำหนดส่ง ความเร่งด่วน ประเภท</span></li>' +
-      '<li class="ai"><span class="n">4</span><b>เสนอ 🤖</b><span>ผู้รับผิดชอบตามบทบาท + ร่างเกษียณ 3 แบบ (เสนอ/สั่งการ/รายงาน)</span></li>' +
-      '<li><span class="n">5</span><b>จัดวาง</b><span>หาที่ว่างบนต้นฉบับ ตรวจไม่ทับข้อความ ชดเชยเครื่องพิมพ์</span></li>' +
-      '<li class="me"><span class="n">6</span><b>คุณตรวจ ✍️</b><span>แก้ข้อความ เลือกผู้ลงนาม พิมพ์ทดสอบ → พิมพ์จริง → เซ็นชื่อ</span></li>' +
-      '<li><span class="n">7</span><b>ติดตาม</b><span>เตือนใกล้/เกินกำหนด ตรวจหลังพิมพ์ ปรับเครื่องพิมพ์อัตโนมัติ</span></li>' +
-      '<li class="ai"><span class="n">8</span><b>ร่างหนังสือตอบ 🤖</b><span>ร่างบันทึกข้อความ/หนังสือภายนอกตอบต้นเรื่อง</span></li></ol></div>' +
-      '<div class="card"><div class="section-title">ประโยชน์ที่ได้เพิ่ม</div><ul class="ai-ben">' +
-      '<li><b>ลดเวลาอ่าน</b>สรุป 3–4 บรรทัด + รายการสิ่งที่ต้องทำพร้อมกำหนดส่ง</li>' +
-      '<li><b>ไม่พลาดกำหนดส่ง</b>หา "ภายในวันที่ ..." ที่ซ่อนในเนื้อหา/สิ่งที่ส่งมาด้วย แล้วเตือนในหน้าภาพรวม</li>' +
-      '<li><b>เกษียณสำนวนสม่ำเสมอ</b>ตามแนวทางหน่วยงาน (แท็บแนวทางเกษียณ) และชื่อ-ตำแหน่งจริง (แท็บบุคลากร)</li>' +
-      '<li><b>อ่านภาพสแกน/ลายมือได้ดี</b>รวมเกษียณลายมือของผู้บังคับบัญชาที่เขียนมาก่อน</li>' +
-      '<li><b>ตรวจลิงก์/QR</b>บอกว่าลิงก์ใช้ทำอะไร (กรอกแบบสำรวจ/ดาวน์โหลดเอกสาร) ร่วมกับตรวจโดเมนของระบบ</li></ul></div></div>' +
-      '<aside class="ai-side">' +
-      '<div class="alert warn"><span class="ic">⚠️</span><span><b>ห้ามใช้กับหนังสือชั้นความลับ</b> (ลับ/ลับมาก/ลับที่สุด) หรือเอกสารข้อมูลส่วนบุคคลอ่อนไหว — เมื่อกดใช้ AI ไฟล์จะถูกส่งไปประมวลผลที่ Anthropic (ผู้ให้บริการ Claude) ระบบจะเตือนและไม่ส่งอัตโนมัติถ้าพบคำว่า "ลับ" และ AI อาจผิดพลาดได้ ต้องตรวจทุกครั้ง</span></div>' +
-      '<div class="card"><div class="section-title">ตั้งค่า AI (Claude)</div><div class="sub small muted" style="margin:-8px 0 12px">เก็บเฉพาะในเบราว์เซอร์เครื่องนี้ ไม่บันทึกลงฐานข้อมูล</div>' +
-      '<div class="field"><label>Anthropic API key</label>' + A.pwField('aiKey', 'sk-ant-...', 'off') + '<span class="hint">สร้าง key ที่ console.anthropic.com (ค่าใช้จ่ายประมาณไม่กี่บาทต่อหนังสือ 1 ฉบับ) · ไม่ใส่ก็ใช้ระบบได้ แค่ไม่มีฟังก์ชัน AI</span></div>' +
-      '<div class="field"><label>โมเดล</label><select id="aiModel">' + A.opts([{ key: 'claude-opus-5', name: 'Claude Opus 5 (แม่นยำที่สุด · แนะนำ)' }, { key: 'claude-sonnet-5', name: 'Claude Sonnet 5 (ประหยัดกว่า)' }, { key: 'claude-haiku-4-5', name: 'Claude Haiku 4.5 (ถูกและเร็วที่สุด)' }], c.model) + '</select></div>' +
-      '<div class="field"><label><input type="checkbox" id="aiAuto"' + (c.auto ? ' checked' : '') + '> วิเคราะห์อัตโนมัติทันทีที่รับหนังสือใหม่ (ยกเว้นหนังสือลับ)</label></div>' +
-      '<div class="flex"><button class="btn btn-primary" id="aiSave">บันทึก</button><button class="btn btn-outline" id="aiTest">ทดสอบ</button><button class="btn btn-ghost" id="aiClear">ลบ key</button></div></div></aside></div>';
+      '<li><span class="n">1</span><b>รับและอ่าน</b><span>ลงทะเบียน ดึงข้อความ OCR และ QR ในเครื่อง</span></li>' +
+      '<li class="ai"><span class="n">2</span><b>วิเคราะห์</b><span>สรุปเรื่อง สิ่งที่ต้องทำ กำหนดส่ง ความเร่งด่วน</span></li>' +
+      '<li class="ai"><span class="n">3</span><b>เสนอ</b><span>ผู้รับผิดชอบ และร่างเกษียณ 3 แบบ</span></li>' +
+      '<li><span class="n">4</span><b>จัดวาง</b><span>หาที่ว่างบนต้นฉบับ ตรวจไม่ทับข้อความ</span></li>' +
+      '<li class="me"><span class="n">5</span><b>ตรวจและพิมพ์</b><span>แก้ข้อความ พิมพ์ แล้วเซ็นชื่อ</span></li>' +
+      '<li><span class="n">6</span><b>ติดตาม</b><span>เตือนกำหนดส่ง ปรับเครื่องพิมพ์จากผลตรวจ</span></li>' +
+      '<li class="ai"><span class="n">7</span><b>ร่างหนังสือตอบ</b><span>ร่างตอบต้นเรื่องเมื่อกดสั่ง</span></li></ol></div></div>';
     $('aiKey').value = c.key || '';
     const read = function () { return { key: $('aiKey').value.trim(), model: $('aiModel').value, auto: $('aiAuto').checked }; };
     $('aiSave').onclick = function () { AI.setCfg(read()); A.toast('บันทึกแล้ว'); };
@@ -751,40 +756,40 @@
   };
 
   /* ======================= คู่มือ ======================= */
+  let guideTab = 'ga';
   A.views.guide = function (el) {
-    el.innerHTML = '<div class="card guide"><div class="section-title">วิธีตรวจว่าพิมพ์เกษียณลงต้นฉบับได้ตรงตำแหน่ง</div>' +
-      '<p style="margin-top:0">ปัญหาหลักของการพิมพ์ลงต้นฉบับมี 4 อย่าง ระบบนี้แก้แต่ละอย่างดังนี้</p>' +
-      '<div class="gtabs"><button class="gtab on" data-g="ga">⚠️ ปัญหา 4 อย่าง</button><button class="gtab" data-g="gb">🖨️ ขั้นตอนพิมพ์ที่ปลอดภัย</button><button class="gtab" data-g="gc">💡 วิธีเสริม</button></div>' +
-      '<div class="gpane on" id="ga"><div class="table-wrap"><table class="data"><thead><tr><th>ปัญหา</th><th>วิธีป้องกัน / ตรวจสอบ</th><th>อยู่ตรงไหนในระบบ</th></tr></thead><tbody>' +
-      '<tr><td><b>1. ไม่รู้ว่าที่ว่างอยู่ตรงไหน</b></td><td>สแกนต้นฉบับตอนรับ → ระบบวิเคราะห์หมึกบนหน้าเป็นตาราง 1×1 มม. แล้ว<b>หาที่ว่างที่พอดีกับขนาดข้อความให้อัตโนมัติ</b> (เลือกมุมที่ต้องการได้) และลากกรอบวางเองบนภาพได้</td><td>หน้าหนังสือ → เกษียณ &amp; พิมพ์ → "หาที่ว่างอัตโนมัติ"</td></tr>' +
-      '<tr><td><b>2. พิมพ์ทับข้อความเดิม/ตรายาง/เกษียณก่อนหน้า</b></td><td>ตรวจหมึกในกรอบทุกครั้งที่ขยับ (กรอบเป็น<b>สีแดง</b>เมื่อทับ) + จำตำแหน่งเกษียณที่พิมพ์ไปแล้วทุกครั้ง แม้ไม่ได้สแกนใหม่ก็กันไม่ให้ทับกัน</td><td>รายการตรวจสอบก่อนพิมพ์ (✅/⚠️)</td></tr>' +
-      '<tr><td><b>3. เครื่องพิมพ์ดึงกระดาษเยื้อง/ย่อขยาย</b></td><td><b>ปรับเทียบเครื่องพิมพ์</b>ครั้งเดียว: พิมพ์หน้ากากบาท วัดด้วยไม้บรรทัด ระบบคำนวณชดเชยทั้งการเลื่อนและสเกล · ตั้งพิมพ์ 100% ขอบ 0 เสมอ</td><td>แท็บ "เครื่องพิมพ์"</td></tr>' +
-      '<tr><td><b>4. ใส่กระดาษผิดด้าน/กลับหัว</b></td><td>ทำเครื่องหมาย ✗ ดินสอที่มุมกระดาษเปล่าตอนพิมพ์หน้าปรับเทียบ แล้วจดวิธีใส่ไว้ ระบบเตือนวิธีใส่ทุกครั้งก่อนพิมพ์จริง</td><td>แท็บ "เครื่องพิมพ์" → วิธีใส่ต้นฉบับ</td></tr>' +
-      '</tbody></table></div></div>' +
-      '<div class="gpane" id="gb"><div class="steps">' +
-      '<div class="st"><div><b>พิมพ์ทดสอบบนกระดาษเปล่า</b> — ระบบพิมพ์ภาพต้นฉบับจาง ๆ + ข้อความเกษียณ + กากบาทมุม</div></div>' +
-      '<div class="st"><div><b>วางซ้อนต้นฉบับ แล้วส่องกับแสงไฟ/กระจกหน้าต่าง</b> (light-box) ดูว่าข้อความไม่ทับของเดิม และขอบกระดาษตรงกับกากบาท</div></div>' +
-      '<div class="st"><div><b>ใส่ต้นฉบับตามวิธีที่บันทึกไว้</b> (ถาดมือ/หน้าหงายหรือคว่ำ/หัวกระดาษเข้าก่อน) ครั้งละ 1 แผ่น เฉพาะหน้าที่จะพิมพ์</div></div>' +
-      '<div class="st"><div><b>พิมพ์จริง</b> — พิมพ์เฉพาะข้อความ (ไม่มีภาพพื้นหลัง) แล้วเซ็นชื่อด้วยปากกาในช่องว่างเหนือ (ชื่อ)</div></div>' +
-      '<div class="st"><div><b>ตรวจหลังพิมพ์</b> — สแกนแผ่นที่พิมพ์แล้วอัปโหลด ระบบเทียบกับภาพเดิม บอกว่าคลาดกี่มม. และปรับค่าเครื่องพิมพ์ให้ครั้งถัดไปแม่นขึ้น</div></div></div></div>' +
-      '<div class="gpane" id="gc"><ul style="margin:0;padding-left:20px">' +
-      '<li><b>กระดาษไข/แผ่นใส</b> พิมพ์แผ่นทดสอบบนกระดาษไข วางทับต้นฉบับจะเห็นชัดโดยไม่ต้องส่องไฟ</li>' +
-      '<li><b>ขอบพิมพ์ไม่ถึง</b> เครื่องพิมพ์ส่วนใหญ่พิมพ์ไม่ได้ห่างขอบน้อยกว่า ~5 มม. ระบบเตือนเมื่อกรอบชิดขอบเกิน</li>' +
-      '<li><b>ที่ว่างไม่พอ</b> ใช้ "พิมพ์แผ่นเกษียณต่อ" (A4 มีหัวอ้างเลขหนังสือ/เรื่อง) แนบท้ายต้นฉบับ — ถูกต้องตามแนวปฏิบัติงานสารบรรณ</li>' +
-      '<li><b>กระดาษยับ/พับ</b> รีดให้เรียบก่อน เครื่องพิมพ์เลเซอร์ใช้ถาดป้อนมือ (manual feed) จะเยื้องน้อยกว่าถาดล่าง</li>' +
-      '<li><b>หน้า 2 ขึ้นไป</b> เลือกหน้าที่จะพิมพ์ในระบบ แล้วใส่เฉพาะแผ่นนั้นเข้าเครื่อง</li></ul></div></div>' +
-      '<div class="card guide"><div class="section-title">การใช้งานประจำวัน</div><div class="table-wrap"><table class="data"><thead><tr><th>เมื่อ</th><th>ทำอะไร</th></tr></thead><tbody>' +
-      '<tr><td>ได้รับหนังสือ</td><td>สแกน → "+ รับหนังสือใหม่" → ระบบอ่านข้อความ/QR (และ AI ถ้าเปิดไว้) → ตรวจสรุปและกำหนดส่ง → บันทึก</td></tr>' +
-      '<tr><td>ธุรการเสนอ</td><td>เกษียณ &amp; พิมพ์ → ผู้ลงนาม = ธุรการ → เลือกแนวทาง "เสนอ" → พิมพ์ → เสนอแฟ้ม</td></tr>' +
-      '<tr><td>หัวหน้าสั่งการ</td><td>เลือกผู้ลงนาม = หัวหน้าหมวด → แนวทาง "สั่งการ" + เลือกผู้รับมอบ → พิมพ์ต่อใต้เกษียณเดิม (ระบบหาที่ว่างถัดไปให้)</td></tr>' +
-      '<tr><td>มี QR/ลิงก์</td><td>แท็บ QR &amp; ลิงก์ → ตรวจโดเมน → เปิด/คัดลอกไปกรอกข้อมูล</td></tr>' +
-      '<tr><td>ดำเนินการเสร็จ</td><td>ผู้ปฏิบัติพิมพ์เกษียณรายงานผล → สถานะ "ดำเนินการแล้ว" → เก็บเข้าแฟ้ม</td></tr></tbody></table></div></div>';
-    // แบบ A: "การใช้งานประจำวัน" ขึ้นก่อน แล้วตามด้วยวิธีตรวจตำแหน่งพิมพ์
-    const gc = el.querySelectorAll('.card.guide');
-    if (gc.length === 2) el.insertBefore(gc[1], gc[0]);
-    // แบบ 2: แท็บในการ์ดวิธีตรวจตำแหน่งพิมพ์
+    const G = [['ga', 'งานประจำวัน'], ['gb', 'พิมพ์ลงต้นฉบับ'], ['gc', 'ปัญหาที่พบบ่อย'], ['gd', 'หลักการเกษียณ']];
+    const pane = function (id, html) { return '<div class="gpane' + (guideTab === id ? ' on' : '') + '" id="' + id + '">' + html + '</div>'; };
+    el.innerHTML = '<div class="card guide"><div class="gtabs">' + G.map(function (g) { return '<button class="gtab' + (guideTab === g[0] ? ' on' : '') + '" data-g="' + g[0] + '">' + g[1] + '</button>'; }).join('') + '</div>' +
+      pane('ga', '<div class="table-wrap"><table class="data"><thead><tr><th>เมื่อ</th><th>ทำอะไร</th></tr></thead><tbody>' +
+        '<tr><td class="nowrap"><b>ได้รับหนังสือ</b></td><td>สแกน แล้วกด "+ รับหนังสือใหม่" ตรวจสรุปและกำหนดส่ง แล้วบันทึก</td></tr>' +
+        '<tr><td class="nowrap"><b>ธุรการเสนอ</b></td><td>เกษียณ &amp; พิมพ์ · ผู้ลงนามธุรการ · แนวทาง "เสนอ" · พิมพ์ · เสนอแฟ้ม</td></tr>' +
+        '<tr><td class="nowrap"><b>หัวหน้าสั่งการ</b></td><td>ผู้ลงนามหัวหน้าหมวด · แนวทาง "สั่งการ" · เลือกผู้รับมอบ · พิมพ์ต่อใต้เกษียณเดิม</td></tr>' +
+        '<tr><td class="nowrap"><b>มี QR/ลิงก์</b></td><td>แท็บ QR &amp; ลิงก์ · ตรวจโดเมน · เปิดหรือคัดลอก</td></tr>' +
+        '<tr><td class="nowrap"><b>ส่งหนังสือ</b></td><td>ทะเบียนหนังสือส่ง · ร่างบันทึกข้อความ · พิมพ์ให้ลงนาม · กรอกเลขที่หลังลงนาม</td></tr>' +
+        '<tr><td class="nowrap"><b>ดำเนินการเสร็จ</b></td><td>พิมพ์เกษียณรายงานผล · กด "เสร็จแล้ว" · เก็บเข้าแฟ้ม</td></tr></tbody></table></div>') +
+      pane('gb', '<div class="steps">' +
+        '<div class="st"><div><b>พิมพ์ทดสอบบนกระดาษเปล่า</b><p class="hint st-h">ได้ภาพต้นฉบับจาง ๆ ข้อความเกษียณ และกากบาทมุม</p></div></div>' +
+        '<div class="st"><div><b>วางซ้อนต้นฉบับแล้วส่องกับแสง</b><p class="hint st-h">ดูว่าไม่ทับของเดิม และขอบกระดาษตรงกากบาท</p></div></div>' +
+        '<div class="st"><div><b>ใส่ต้นฉบับตามวิธีที่บันทึกไว้</b><p class="hint st-h">ครั้งละ 1 แผ่น เฉพาะหน้าที่จะพิมพ์</p></div></div>' +
+        '<div class="st"><div><b>พิมพ์จริง แล้วเซ็นชื่อ</b><p class="hint st-h">พิมพ์เฉพาะข้อความ ไม่มีภาพพื้นหลัง</p></div></div>' +
+        '<div class="st"><div><b>ตรวจหลังพิมพ์</b><p class="hint st-h">สแกนแผ่นที่พิมพ์แล้วอัปโหลด ระบบบอกว่าคลาดกี่มม. และปรับค่าให้ครั้งถัดไป</p></div></div></div>') +
+      pane('gc', '<div class="table-wrap"><table class="data"><thead><tr><th>ปัญหา</th><th>วิธีแก้</th></tr></thead><tbody>' +
+        '<tr><td><b>ไม่รู้ว่าที่ว่างอยู่ตรงไหน</b></td><td>กด "หาที่ว่างอัตโนมัติ" หรือลากกรอบบนภาพ</td></tr>' +
+        '<tr><td><b>พิมพ์ทับของเดิม</b></td><td>กรอบเป็นสีแดงเมื่อทับ ให้ย้ายตำแหน่ง ระบบจำตำแหน่งเกษียณที่พิมพ์แล้ว</td></tr>' +
+        '<tr><td><b>กระดาษเยื้อง ย่อ หรือขยาย</b></td><td>ปรับเทียบที่ ตั้งค่า › เครื่องพิมพ์ · พิมพ์ 100% ขอบ 0 เสมอ · ใช้ถาดป้อนมือ</td></tr>' +
+        '<tr><td><b>ใส่กระดาษผิดด้าน</b></td><td>จดวิธีใส่ไว้ตอนปรับเทียบ ระบบเตือนก่อนพิมพ์จริง</td></tr>' +
+        '<tr><td><b>ที่ว่างไม่พอ</b></td><td>ใช้ "พิมพ์แผ่นเกษียณต่อ" แนบท้ายต้นฉบับ</td></tr>' +
+        '<tr><td><b>พิมพ์ไม่ถึงขอบ</b></td><td>เครื่องส่วนใหญ่พิมพ์ไม่ได้ในระยะ 5 มม. จากขอบ ระบบจะเตือน</td></tr>' +
+        '<tr><td><b>กระดาษยับหรือพับ</b></td><td>รีดให้เรียบก่อนใส่เครื่อง</td></tr></tbody></table></div>') +
+      pane('gd', '<div class="table-wrap"><table class="data"><thead><tr><th>ชนิด</th><th>หลักการเขียน</th></tr></thead><tbody>' +
+        '<tr><td class="nowrap"><b>เกษียณเสนอ</b></td><td>ขึ้นต้น "เรียน" + ตำแหน่งผู้บังคับบัญชา สรุปเรื่องสั้น ๆ และสิ่งที่ขอให้พิจารณา</td></tr>' +
+        '<tr><td class="nowrap"><b>เกษียณสั่งการ</b></td><td>สั้น ชัด ระบุผู้รับมอบและกำหนดเวลา</td></tr>' +
+        '<tr><td class="nowrap"><b>เกษียณรายงานผล</b></td><td>บอกว่าทำอย่างไร เมื่อไร อ้างเลขหนังสือตอบถ้ามี</td></tr>' +
+        '<tr><td class="nowrap"><b>ทุกเกษียณ</b></td><td>มีลายมือชื่อ (ชื่อเต็ม) ตำแหน่ง และวันที่ · ไม่ทับข้อความเดิม</td></tr></tbody></table></div>') + '</div>';
     el.querySelectorAll('.gtab').forEach(function (b) {
       b.onclick = function () {
+        guideTab = b.dataset.g;
         el.querySelectorAll('.gtab,.gpane').forEach(function (x) { x.classList.remove('on'); });
         b.classList.add('on');
         el.querySelector('#' + b.dataset.g).classList.add('on');
@@ -807,8 +812,8 @@
     const why = !st.ready
       ? 'ยังไม่ได้ย้ายรายชื่อไปสมุดชื่อล็อกอิน — ตอนนี้คนนอกที่เปิดหน้านี้ยังเห็นว่าใครเป็นเจ้าของ/ผู้ดูแลระบบ กดปุ่มด้านล่างครั้งเดียวเพื่อย้าย (ไม่กระทบการล็อกอินของใคร; รายชื่อนี้ใช้ร่วมกับอีก 2 ระบบในโปรเจกต์เดียวกัน)'
       : 'สมุดชื่อล็อกอินไม่ตรงกับรายชื่อทีม ' + bad + ' ชื่อ (' + st.missing.concat(st.extra).join(', ') + ') — กดซิงก์เพื่อให้ตรงกัน';
-    box.innerHTML = '<div style="margin-top:12px;padding:12px;border:1px solid #f59e0b;background:#fff8e1;border-radius:10px;color:#7a4b00;font-size:13px">⚠ ' + esc(why) +
-      '<div style="margin-top:8px"><button class="btn btn-sm btn-primary" id="dirMigrate">' + (st.ready ? 'ซิงก์สมุดชื่อล็อกอิน' : 'ย้ายรายชื่อไปสมุดชื่อล็อกอิน') + '</button></div></div>';
+    box.innerHTML = '<div class="alert warn dir-note"><span>' + esc(why) +
+      '<div style="margin-top:8px"><button class="btn btn-sm btn-primary" id="dirMigrate">' + (st.ready ? 'ซิงก์สมุดชื่อล็อกอิน' : 'ย้ายรายชื่อไปสมุดชื่อล็อกอิน') + '</button></div></span></div>';
     const b = box.querySelector('#dirMigrate');
     b.onclick = async function () {
       const done = A.busy(b, 'กำลังดำเนินการ...');
@@ -824,28 +829,26 @@
     const trash = S.letters.filter(function (l) { return l.deletedAt; }).map(function (l) { return Object.assign({ _col: 'letters', _no: l.regNo }, l); })
       .concat(S.out.filter(function (l) { return l.deletedAt; }).map(function (l) { return Object.assign({ _col: 'out', _no: 'หนังสือส่ง ' + (l.docSuffix || 'ร่าง') }, l); }));
     el.innerHTML = '<div class="split"><div>' +
-      '<div class="card"><div class="section-title">ผู้ใช้งานระบบ' + (own ? '<span class="right"><button class="btn btn-sm btn-primary" id="stAdd">+ เพิ่มผู้ใช้</button></span>' : '') + '</div>' +
+      '<div class="card card-flush"><div class="cf-head section-title">ผู้ใช้งานระบบ' + (own ? '<span class="right"><button class="btn btn-sm btn-primary" id="stAdd">+ เพิ่มผู้ใช้</button></span>' : '') + '</div>' +
       '<div class="table-wrap"><table class="data"><thead><tr><th>ชื่อ</th><th>สิทธิ์</th>' + (own ? '<th></th>' : '') + '</tr></thead><tbody>' +
       S.team.map(function (m) {
-        return '<tr><td>' + esc(m.name) + A.roleTag(m) + '</td><td>' + (m.isOwner ? 'เจ้าของระบบ' : (m.isAdmin ? 'ผู้ดูแลระบบ' : 'ผู้ใช้งาน')) + '</td>' +
-          (own ? '<td class="nowrap">' + (m.isOwner ? '' : '<button class="btn btn-sm btn-outline" data-adm="' + esc(m.name) + '">' + (m.isAdmin ? 'ถอดผู้ดูแล' : 'ตั้งเป็นผู้ดูแล') + '</button> ' +
+        return '<tr><td class="strong">' + esc(m.name) + '</td><td class="nowrap">' + (m.isOwner ? 'เจ้าของระบบ' : (m.isAdmin ? 'ผู้ดูแลระบบ' : 'ผู้ใช้งาน')) + '</td>' +
+          (own ? '<td class="nowrap r">' + (m.isOwner ? '' : '<button class="btn btn-sm btn-outline" data-adm="' + esc(m.name) + '">' + (m.isAdmin ? 'ถอดผู้ดูแล' : 'ตั้งเป็นผู้ดูแล') + '</button> ' +
             '<button class="btn btn-sm btn-outline" data-rpw="' + esc(m.name) + '">ตั้งรหัสใหม่</button> <button class="btn btn-sm btn-danger" data-rm="' + esc(m.name) + '">ลบ</button>') + '</td>' : '') + '</tr>';
       }).join('') + '</tbody></table></div>' +
       (own ? '<div id="dirNotice"></div>' : '') +
-      '<div class="flex" style="margin-top:12px"><button class="btn btn-outline btn-sm" id="stMyPw">เปลี่ยนรหัสผ่านของฉัน</button></div></div>' +
-      '<div class="card"><div class="section-title">ถังขยะ <span class="sub">' + trash.length + ' ฉบับ</span></div>' +
+      '<div class="cf-foot"><button class="btn btn-outline btn-sm" id="stMyPw">เปลี่ยนรหัสผ่านของฉัน</button></div></div></div>' +
+      '<div><div class="card"><div class="section-title">สำรองข้อมูล</div><button class="btn btn-outline" id="stExp">ส่งออกข้อมูลทั้งหมด (.json)</button>' +
+      '<p class="hint">ไม่รวมไฟล์สแกน · ไฟล์สแกนเก็บที่ <b>' + ({ drive: 'Google Drive', firestore: 'Firestore (ฟรี 1 GB ใช้ร่วมกับระบบอื่น)', browser: 'เบราว์เซอร์เครื่องนี้ (โหมดทดลอง)' }[FBL.fileStore] || '-') + '</b></p>' +
+      (can && FBL.fileStore === 'drive' ? '<div class="pp-sec">ย้ายไฟล์สแกนเดิมจาก Firestore ไป Google Drive</div>' +
+        '<p class="hint">ลบออกจาก Firestore เฉพาะไฟล์ที่ Drive ยืนยันครบแล้ว หยุดกลางทางกดใหม่ได้</p>' +
+        '<button class="btn btn-outline" id="stMvDrive">เริ่มย้ายไฟล์</button><div id="stMvInfo" class="hint" style="margin-top:6px"></div>' : '') +
+      (FBL.mode === 'demo' ? '<div class="card-act"><button class="btn btn-danger" id="stReset">ล้างข้อมูลทดลองทั้งหมด</button></div>' : '') + '</div>' +
+      '<div class="card' + (trash.length ? ' card-flush' : '') + '"><div class="' + (trash.length ? 'cf-head ' : '') + 'section-title">ถังขยะ <span class="sub">' + trash.length + ' ฉบับ</span></div>' +
       (trash.length ? '<div class="table-wrap"><table class="data"><tbody>' + trash.map(function (l) {
-        return '<tr><td>' + esc(l._no) + ' · ' + esc(l.subject || '') + '<br><span class="muted small">ลบโดย ' + esc(l.deletedBy || '') + '</span></td><td class="nowrap"><button class="btn btn-sm btn-outline" data-rs="' + esc(l.id) + '" data-col="' + l._col + '">กู้คืน</button>' +
+        return '<tr><td>' + esc(l._no) + ' · ' + esc(l.subject || '') + '<br><span class="muted small">ลบโดย ' + esc(l.deletedBy || '') + '</span></td><td class="nowrap r"><button class="btn btn-sm btn-outline" data-rs="' + esc(l.id) + '" data-col="' + l._col + '">กู้คืน</button>' +
           (can ? ' <button class="btn btn-sm btn-danger" data-hd="' + esc(l.id) + '" data-col="' + l._col + '">ลบถาวร</button>' : '') + '</td></tr>';
-      }).join('') + '</tbody></table></div>' : '<div class="empty">ว่าง</div>') + '</div></div>' +
-      '<div><div class="card"><div class="section-title">สำรองข้อมูล</div><div class="flex"><button class="btn btn-outline" id="stExp">ส่งออกข้อมูลทั้งหมด (.json)</button></div>' +
-      '<p class="hint">ไฟล์ .json มีทะเบียน ผลวิเคราะห์ เกษียณ และการตั้งค่า (ไม่รวมไฟล์สแกน)</p>' +
-      '<p class="hint">ไฟล์สแกนเก็บที่: <b>' + ({ drive: 'Google Drive', firestore: 'Firestore (พื้นที่ฟรี 1 GB ใช้ร่วมกับระบบอื่นในโปรเจกต์)', browser: 'เบราว์เซอร์เครื่องนี้ (โหมดทดลอง)' }[FBL.fileStore] || '-') + '</b></p>' +
-      (can && FBL.fileStore === 'drive' ? '<div style="margin-top:10px"><div class="small"><b>ย้ายไฟล์สแกนเดิมจาก Firestore ไป Google Drive</b></div>' +
-        '<p class="hint" style="margin:4px 0 8px">ใช้เมื่อเคยเก็บไฟล์ใน Firestore ก่อนตั้งค่า Drive — ลบออกจาก Firestore เฉพาะไฟล์ที่ Drive ยืนยันว่าครบแล้ว หยุดกลางทางกดใหม่ได้</p>' +
-        '<button class="btn btn-outline" id="stMvDrive">เริ่มย้ายไฟล์</button><div id="stMvInfo" class="hint" style="margin-top:6px"></div></div>' : '') +
-      (FBL.mode === 'demo' ? '<button class="btn btn-danger" id="stReset" style="margin-top:8px">ล้างข้อมูลทดลองทั้งหมด</button>' : '') + '</div>' +
-      '</div></div>';
+      }).join('') + '</tbody></table></div>' : '<div class="empty small">ไม่มีรายการในถังขยะ</div>') + '</div></div></div>';
     const q = function (s) { return el.querySelector(s); };
     if (own) {
       renderDirNotice(el);

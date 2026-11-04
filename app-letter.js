@@ -79,7 +79,7 @@
       await save('เปลี่ยนสถานะ', 'เปลี่ยนสถานะเป็น "' + D.STATUS[this.value].name + '"');
     };
     $('lwDel').onclick = async function () {
-      if (!(await A.confirm('ย้ายหนังสือนี้ไปถังขยะ? (กู้คืนได้ที่แท็บตั้งค่า)', 'ย้ายไปถังขยะ', true))) return;
+      if (!(await A.confirm('ย้ายหนังสือนี้ไปถังขยะ? (กู้คืนได้ที่ ตั้งค่า › ผู้ใช้และข้อมูล)', 'ย้ายไปถังขยะ', true))) return;
       try { await FBL.softDelete('letters', LS.id, LS.rec.regNo); A.toast('ย้ายไปถังขยะแล้ว'); } catch (e) { A.toast(e.message, true); }
     };
     renderViewerShell();
@@ -104,7 +104,7 @@
       '<label class="small flex" style="gap:4px"><input type="checkbox" id="pgQR"' + (LS.showQR ? ' checked' : '') + '> แสดง QR</label>' +
       '<button class="btn btn-sm btn-outline" id="pgOpen" title="เปิดไฟล์ต้นฉบับ">เปิดไฟล์</button></div>' +
       '<div class="pagebox" id="pgBox"><canvas id="pgCv"></canvas></div>' +
-      '<p class="hint" style="margin:6px 0 0">กรอบสีน้ำเงิน = เกษียณที่กำลังทำ (ลากย้ายได้ · กลายเป็น<b style="color:var(--bad)">สีแดง</b>เมื่อทับข้อความ) · กรอบเทาประ = เกษียณที่พิมพ์แล้ว · กรอบส้ม = QR Code</p>';
+      '<p class="hint" style="margin:6px 0 0">น้ำเงิน = เกษียณที่กำลังทำ (ลากย้ายได้ · <b style="color:var(--bad)">แดง</b> = ทับข้อความ) · เทาประ = พิมพ์แล้ว · ส้ม = QR</p>';
     $('pgPrev').onclick = function () { if (LS.page > 0) { LS.page--; onPageChange(); } };
     $('pgNext').onclick = function () { if (LS.page < n - 1) { LS.page++; onPageChange(); } };
     $('pgQR').onchange = function () { LS.showQR = this.checked; drawViewer(); };
@@ -207,20 +207,20 @@
     const typeOpts = Object.keys(D.TYPES).map(function (k) { return { key: k, name: D.TYPES[k].name }; });
     const ppl = A.people().map(function (p) { return { key: p.id, name: A.personLabel(p) }; });
     el.innerHTML = '<div class="card"><div class="section-title">อ่าน & วิเคราะห์หนังสือ</div>' +
-      '<div class="flex"><button class="btn btn-sm btn-outline" id="suLocal">📄 อ่านข้อความ + QR (ไม่ใช้ AI)</button>' +
-      '<button class="btn btn-sm btn-outline" id="suOcr">🔍 OCR ภาพสแกน</button>' +
-      '<button class="btn btn-sm btn-primary" id="suAI">🤖 AI วิเคราะห์ทั้งหมด</button>' +
-      '<button class="btn btn-sm btn-outline" id="suReply">✉️ ร่างหนังสือตอบ (AI)</button></div>' +
+      '<div class="flex"><button class="btn btn-sm btn-outline" id="suLocal">อ่านข้อความ + QR</button>' +
+      '<button class="btn btn-sm btn-outline" id="suOcr">OCR ภาพสแกน</button>' +
+      '<button class="btn btn-sm btn-primary" id="suAI">AI วิเคราะห์</button>' +
+      '<button class="btn btn-sm btn-outline" id="suReply">ร่างหนังสือตอบ (AI)</button></div>' +
       '<p class="hint" style="margin:8px 0 0">' + (LS.busy ? '<b>' + esc(LS.busy) + '</b>' :
-        (AI.ready() ? 'AI พร้อมใช้ (' + esc(AI.cfg().model) + ')' : 'ยังไม่ได้ตั้งค่า AI — ปุ่ม 🤖 ใช้ไม่ได้ (ตั้งที่แท็บ "AI ช่วยงาน")') +
+        (AI.ready() ? 'AI พร้อมใช้ (' + esc(AI.cfg().model) + ')' : 'ยังไม่ได้ตั้งค่า AI (ตั้งที่ ตั้งค่า › AI ช่วยงาน)') +
         (ai ? ' · วิเคราะห์ล่าสุด ' + esc((ai.at || '').slice(0, 16).replace('T', ' ')) : '')) + '</p></div>' +
-      (ai ? '<div class="card"><div class="section-title">🤖 ผลวิเคราะห์จาก AI <span class="sub">ตรวจทานก่อนใช้ทุกครั้ง</span></div>' +
+      (ai ? '<div class="card"><div class="section-title">ผลวิเคราะห์จาก AI <span class="sub">ตรวจทานก่อนใช้</span></div>' +
         (ai.keyPoints && ai.keyPoints.length ? '<b class="small">ประเด็นสำคัญ</b><ul class="small" style="margin:4px 0 10px">' + ai.keyPoints.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>' : '') +
         (ai.actions && ai.actions.length ? '<b class="small">สิ่งที่ต้องดำเนินการ</b><div class="table-wrap" style="margin:4px 0 10px"><table class="data"><tbody>' + ai.actions.map(function (x) {
           return '<tr><td>' + esc(x.what) + (x.how ? '<br><span class="muted small">' + esc(x.how) + '</span>' : '') + '</td><td class="nowrap">' + (x.deadline ? esc(U.thDate(x.deadline, 'short')) : '') + '</td></tr>';
         }).join('') + '</tbody></table></div>' : '') +
         (ai.assigneeReason ? '<p class="small" style="margin:0 0 8px"><b>ผู้รับผิดชอบที่แนะนำ:</b> ' + esc((D.ROLES[ai.assigneeRole] || {}).name || '') + ' — ' + esc(ai.assigneeReason) + '</p>' : '') +
-        (ai.cautions && ai.cautions.length ? '<div class="alert warn"><span class="ic">⚠️</span><span>' + ai.cautions.map(esc).join('<br>') + '</span></div>' : '') + '</div>' : '') +
+        (ai.cautions && ai.cautions.length ? '<div class="alert warn"><span>' + ai.cautions.map(esc).join('<br>') + '</span></div>' : '') + '</div>' : '') +
       '<div class="card"><div class="section-title">ข้อมูลหนังสือ</div><div class="grid grid-2">' +
       fld('regNo', 'เลขทะเบียนรับ') + fld('receivedDate', 'วันที่รับ', 'date') +
       fld('docNo', 'ที่ (เลขที่หนังสือ)') + fld('docDate', 'ลงวันที่', 'date') +
@@ -231,10 +231,10 @@
       '<div class="field"><label>ประเภทหนังสือ</label><select data-k="type">' + A.opts(typeOpts, r.type || 'other') + '</select></div>' +
       '<div class="field"><label>วันกำหนด / ต้องเสร็จภายใน</label><input type="date" data-k="dueDate" value="' + esc(r.dueDate) + '"></div>' +
       '<div class="field"><label>กำหนดนี้คือการ</label><select data-k="dueKind">' + A.opts(D.DUE_KINDS, r.dueKind || D.DUE_KINDS[0]) + '</select></div>' +
-      (!r.dueDate && A.isOpen(r) ? '<div class="field span-all"><span class="hint" style="color:var(--warn)">ยังไม่ได้ใส่วันกำหนด — ระบบจะไม่เตือนฉบับนี้ทาง LINE</span></div>' : '') +
+      (!r.dueDate && A.isOpen(r) ? '<div class="field span-all"><span class="hint" style="color:var(--warn)">ไม่มีวันกำหนด ระบบจะไม่เตือนทาง LINE</span></div>' : '') +
       '<div class="field span-all"><label>ผู้รับผิดชอบ</label><select data-k="assigneeId">' + A.opts(ppl, r.assigneeId, '— ยังไม่มอบหมาย —') + '</select></div>' +
       '<div class="field span-all"><label>สรุปเรื่อง</label><textarea data-k="summary" rows="4">' + esc(r.summary) + '</textarea></div>' +
-      '<div class="field span-all"><label>สิ่งที่ขอให้ดำเนินการ (ใช้เติม {สรุป} ในเกษียณ — เขียนต่อจากคำว่า "ขอให้")</label><input data-k="request" value="' + esc(r.request) + '"></div>' +
+      '<div class="field span-all"><label>สิ่งที่ขอให้ดำเนินการ (เติม {สรุป} ในเกษียณ)</label><input data-k="request" value="' + esc(r.request) + '"></div>' +
       '<div class="field"><label>อ้างถึง</label><input data-k="refs" value="' + esc(r.refs) + '"></div>' +
       '<div class="field"><label>สิ่งที่ส่งมาด้วย</label><input data-k="attachments" value="' + esc(r.attachments) + '"></div></div>' +
       '<div class="flex" style="margin-top:12px"><button class="btn btn-primary" id="suSave">บันทึก</button><span class="hint" id="suDirty"></span></div></div>' +
@@ -316,7 +316,7 @@
     };
   }
   async function runAI(silent) {
-    if (!AI.ready()) return A.toast('ตั้งค่า AI ที่แท็บ "AI ช่วยงาน" ก่อน', true);
+    if (!AI.ready()) return A.toast('ตั้งค่า AI ที่ ตั้งค่า › AI ช่วยงาน ก่อน', true);
     if (!LS.files || !LS.files.length) return A.toast('ไม่มีไฟล์ให้ AI อ่าน', true);
     if (isSecret()) {
       if (silent) return;
@@ -324,7 +324,7 @@
     }
     LS.dirty = true;
     try {
-      setBusy('🤖 AI กำลังอ่านและวิเคราะห์หนังสือ (ประมาณ 20–60 วินาที)...');
+      setBusy('AI กำลังวิเคราะห์หนังสือ (ประมาณ 20–60 วินาที)...');
       const res = await AI.analyze(LS.files, LS.doc.pages, aiCtx());
       const r = LS.rec;
       ['docNo', 'docDate', 'from', 'to', 'subject', 'summary', 'urgency', 'secrecy', 'type'].forEach(function (k) { if (res[k]) r[k] = res[k]; });
@@ -352,7 +352,7 @@
         '<div class="field span-2"><label>ผู้ลงนาม</label><select id="rpS">' + A.opts(A.people().map(function (p) { return { key: p.id, name: A.personLabel(p) }; }), me ? me.id : 'p-head') + '</select></div>' +
         '<div class="field span-all"><label>ประเด็นที่ต้องการตอบ (เช่น ส่งข้อมูลตามแบบแล้ว / ไม่มีข้อมูล / ขอขยายเวลา)</label><textarea id="rpP" rows="3"></textarea></div></div>' +
         '<div id="rpOut" style="margin-top:12px"></div>',
-      foot: '<button class="btn btn-outline" data-close>ปิด</button><button class="btn btn-outline" id="rpCopy" disabled>คัดลอก</button><button class="btn btn-primary" id="rpGo">🤖 ร่าง</button>'
+      foot: '<button class="btn btn-outline" data-close>ปิด</button><button class="btn btn-outline" id="rpCopy" disabled>คัดลอก</button><button class="btn btn-primary" id="rpGo">ร่าง</button>'
     });
     m.q('#rpGo').onclick = async function () {
       const done = A.busy(this, 'กำลังร่าง...');
@@ -373,26 +373,26 @@
     el.innerHTML = '<div class="card"><div class="section-title">QR Code และลิงก์ที่แนบมากับหนังสือ' +
       '<span class="right"><button class="btn btn-sm btn-primary" id="qrScan"' + (LS.busy ? ' disabled' : '') + '>สแกน QR ทุกหน้า</button><button class="btn btn-sm btn-outline" id="qrAdd">+ เพิ่มลิงก์เอง</button></span></div>' +
       (LS.busy ? '<p class="hint"><b>' + esc(LS.busy) + '</b></p>' : '') +
-      '<p class="hint" style="margin-top:0">ระบบ<b>ไม่เปิดลิงก์เอง</b> — ตรวจชื่อเว็บ (โดเมน) ก่อนกดเปิดทุกครั้ง · ✅ โดเมนหน่วยงานรัฐ .go.th · ⚠️ ลิงก์ย่อ/โดเมนทั่วไป ควรตรวจกับผู้ส่ง</p>' +
+      '<p class="hint" style="margin-top:0">ระบบไม่เปิดลิงก์เอง ตรวจชื่อเว็บก่อนกดเปิดทุกครั้ง</p>' +
       (links.length ? links.map(function (k, i) {
         const info = U.linkInfo(k.url);
-        const lv = { ok: ['b-ok', '✅ น่าเชื่อถือ'], info: ['b-info', 'ℹ️ บริการสาธารณะ'], warn: ['b-warn', '⚠️ ตรวจก่อนเปิด'], bad: ['b-bad', '⛔ ระวัง'], text: ['b-mute', 'ข้อความ'] }[info.level];
+        const lv = { ok: ['b-ok', 'น่าเชื่อถือ'], info: ['b-info', 'บริการสาธารณะ'], warn: ['b-warn', 'ตรวจก่อนเปิด'], bad: ['b-bad', 'ระวัง'], text: ['b-mute', 'ข้อความ'] }[info.level];
         const src = { qr: 'QR หน้า ' + k.page, pdf: 'ลิงก์ในไฟล์ หน้า ' + k.page, text: 'พบในข้อความ', ai: 'AI พบในเนื้อหา', manual: 'เพิ่มเอง' }[k.source] || '';
-        return '<div class="qr-item">' + (k.thumb ? '<img src="' + k.thumb + '" alt="QR">' : '<div style="width:84px;height:84px;border-radius:6px;background:var(--paper-2);display:flex;align-items:center;justify-content:center;font-size:28px">🔗</div>') +
+        return '<div class="qr-item">' + (k.thumb ? '<img src="' + k.thumb + '" alt="QR">' : '<div style="width:84px;height:84px;border-radius:6px;background:var(--paper-2);display:flex;align-items:center;justify-content:center;font-size:28px;color:var(--ink-mute)">' + A.ic('link') + '</div>') +
           '<div><div class="flex" style="gap:6px"><span class="badge ' + lv[0] + '">' + lv[1] + '</span><span class="muted small">' + esc(src) + '</span>' +
           (info.host ? '<b class="small">' + esc(info.host) + '</b>' : '') + '</div>' +
           '<div class="u" style="margin:4px 0">' + esc(k.url) + '</div>' +
-          (k.purpose ? '<div class="small">🤖 ' + esc(k.purpose) + '</div>' : '') +
+          (k.purpose ? '<div class="small">' + esc(k.purpose) + '</div>' : '') +
           '<div class="small muted">' + esc(info.note) + '</div>' +
           '<div class="flex" style="margin-top:6px">' + (info.url ? '<a class="btn btn-sm btn-outline" href="' + esc(info.url) + '" target="_blank" rel="noopener noreferrer">เปิดลิงก์ ↗</a>' : '') +
           '<button class="btn btn-sm btn-outline" data-cp="' + i + '">คัดลอก</button>' +
           (k.source === 'qr' ? '<button class="btn btn-sm btn-outline" data-see="' + i + '">ดูบนหน้า</button>' : '') +
           '<button class="btn btn-sm btn-ghost" data-rm="' + i + '">ลบ</button></div></div></div>';
       }).join('') : '<div class="empty">ยังไม่พบ QR/ลิงก์ — กด "สแกน QR ทุกหน้า"</div>') + '</div>' +
-      '<div class="card guide"><div class="section-title">เมื่อ QR อ่านไม่ออก</div><ul class="small">' +
+      '<details class="fold"><summary>เมื่อ QR อ่านไม่ออก</summary><ul>' +
       '<li>สแกนต้นฉบับใหม่ที่ 300 dpi (QR ขนาดเล็กกว่า 1.5 ซม. ต้องใช้ความละเอียดสูง)</li>' +
       '<li>สำเนาถ่ายเอกสารหลายทอดทำให้ QR เบลอ — ขอไฟล์ PDF ต้นฉบับจากผู้ส่ง หรือดูลิงก์ในระบบสารบรรณอิเล็กทรอนิกส์</li>' +
-      '<li>ใช้กล้องมือถือสแกนจากกระดาษโดยตรง แล้วกด "+ เพิ่มลิงก์เอง" เพื่อเก็บไว้ในทะเบียน</li></ul></div>';
+      '<li>ใช้กล้องมือถือสแกนจากกระดาษโดยตรง แล้วกด "+ เพิ่มลิงก์เอง" เพื่อเก็บไว้ในทะเบียน</li></ul></details>';
     $('qrScan').onclick = function () { runLocal(false); };
     $('qrAdd').onclick = async function () {
       const m = A.modal({ title: 'เพิ่มลิงก์', size: 'narrow', body: '<div class="field"><label>ลิงก์</label><input id="lkU" placeholder="https://"></div><div class="field" style="margin-top:8px"><label>ใช้ทำอะไร</label><input id="lkP"></div>',
@@ -483,7 +483,7 @@
     add(pc.calibratedAt ? 'ok' : 'warn', pc.calibratedAt ? 'ปรับเทียบเครื่องพิมพ์แล้ว (' + esc(pc.name || 'เครื่องนี้') + ')' : 'ยังไม่ปรับเทียบเครื่องพิมพ์ — ตำแหน่งอาจคลาด 2–5 มม.');
     const sg = A.person(e.signerId);
     if (!sg) add('bad', 'ยังไม่เลือกผู้ลงนาม');
-    else if (!sg.name) add('warn', 'ผู้ลงนามยังไม่มีชื่อ — กรอกที่แท็บบุคลากร/ตำแหน่ง');
+    else if (!sg.name) add('warn', 'ผู้ลงนามยังไม่มีชื่อ — กรอกที่ ตั้งค่า › บุคลากร');
     if (/\.{6,}/.test(e.text)) add('warn', 'มีข้อความที่ยังไม่ได้เติม (........)');
     if (L.font.key.indexOf('เว็บ') >= 0) add('warn', 'เครื่องนี้ไม่มีแบบอักษร TH Sarabun — ใช้ Sarabun แทน (หน้าตาต่างเล็กน้อย)');
     add(LS.testPrinted ? 'ok' : 'warn', LS.testPrinted ? 'พิมพ์ทดสอบบนกระดาษเปล่าแล้ว' : 'แนะนำ: พิมพ์ทดสอบบนกระดาษเปล่าแล้วส่องซ้อนต้นฉบับก่อน');
@@ -492,7 +492,7 @@
   function updateChecks() {
     const box = $('enChecks'); if (!box || !LS.en) return;
     const L = layoutOf(LS.en), c = checkBox(L);
-    box.innerHTML = c.items.map(function (x) { return '<div class="ck ' + x[0] + '">' + ({ ok: '✅', warn: '⚠️', bad: '⛔' }[x[0]]) + ' <span>' + x[1] + '</span></div>'; }).join('');
+    box.innerHTML = c.items.map(function (x) { return '<div class="ck ' + x[0] + '">' + '<i>' + ({ ok: '✓', warn: '!', bad: '×' }[x[0]]) + '</i><span>' + x[1] + '</span></div>'; }).join('');
     const sz = $('enSize'); if (sz) sz.textContent = 'ขนาดกรอบ ' + L.wMm.toFixed(0) + ' × ' + L.hMm.toFixed(0) + ' มม. · ' + L.lines.length + ' บรรทัด';
     drawViewer();
   }
@@ -520,13 +520,13 @@
       '<div class="field"><label>เรียน (ผู้บังคับบัญชาที่เสนอถึง)</label><input id="enTo" value="' + esc(e.toText) + '"></div>' +
       '<div class="field"><label>ผู้รับมอบ (ใช้กับ {ผู้รับมอบ})</label><select id="enAsg">' + A.opts(A.people().map(function (p) { return { key: p.id, name: A.personLabel(p) }; }), e.assignId, '—') + '</select></div></div>' +
       '<div style="margin-top:10px">' +
-      (aiTxt ? '<button class="chip sug" id="enAi" title="ร่างโดย AI จากเนื้อหาหนังสือ">🤖 ร่างจาก AI</button>' : '') +
+      (aiTxt ? '<button class="chip sug" id="enAi" title="ร่างโดย AI จากเนื้อหาหนังสือ">ร่างจาก AI</button>' : '') +
       T.filter(function (t) { return showAll || t.group === group; }).map(function (t) {
-        return '<button class="chip' + (e.tplId === t.id ? ' active' : (sug && sug.id === t.id ? ' sug' : '')) + '" data-tpl="' + t.id + '" title="' + esc(t.text) + '">' + (sug && sug.id === t.id ? '⭐ ' : '') + esc(t.title) + '</button>';
+        return '<button class="chip' + (e.tplId === t.id ? ' active' : (sug && sug.id === t.id ? ' sug' : '')) + '" data-tpl="' + t.id + '" title="' + esc(t.text) + '">' + (sug && sug.id === t.id ? 'แนะนำ · ' : '') + esc(t.title) + '</button>';
       }).join('') +
       '<button class="chip" id="enAllT">' + (showAll ? 'แสดงเฉพาะบทบาทนี้' : 'แสดงทุกแนวทาง…') + '</button></div>' +
-      '<p class="hint" style="margin:2px 0 0">⭐ = แนะนำตามประเภทหนังสือ "' + esc((D.TYPES[LS.rec.type || 'other'] || D.TYPES.other).name) + '"</p>' +
-      '<div class="field" style="margin-top:10px"><label>ข้อความเกษียณ (แก้ได้อิสระ · เว้นวรรค 5 ช่องหน้าบรรทัด = ย่อหน้า 1 ซม.)</label><textarea id="enText" rows="5">' + esc(e.text) + '</textarea></div>' +
+      '' +
+      '<div class="field" style="margin-top:10px"><label>ข้อความเกษียณ (เว้นวรรค 5 ช่อง = ย่อหน้า)</label><textarea id="enText" rows="5">' + esc(e.text) + '</textarea></div>' +
       '<div class="grid grid-4" style="margin-top:10px">' +
       '<div class="field"><label>วันที่</label><input type="date" id="enDate" value="' + esc(e.date) + '"></div>' +
       '<div class="field"><label>รูปแบบวันที่</label><select id="enDs">' + A.opts([{ key: 'short', name: '27 ก.ย. 69' }, { key: 'shortFull', name: '27 ก.ย. 2569' }, { key: 'long', name: '27 กันยายน 2569' }], e.dateStyle) + '</select></div>' +
@@ -536,11 +536,11 @@
       '<div class="field"><label>ขนาด (pt)</label><input type="number" id="enPt" min="10" max="24" step="0.5" value="' + e.pt + '"></div>' +
       '<div class="field"><label>ความกว้างกรอบ (มม.)</label><input type="number" id="enW" min="40" max="190" step="1" value="' + e.w + '"></div>' +
       '<div class="field"><label>ระยะบรรทัด</label><input type="number" id="enLf" min="0.9" max="1.6" step="0.05" value="' + e.lineF + '"></div>' +
-      '<div class="field span-all"><label><input type="checkbox" id="enSig"' + (e.sig !== false ? ' checked' : '') + '> พิมพ์ส่วนลงนาม — เว้นที่เซ็นชื่อ + (ชื่อ-สกุล) + ตำแหน่ง + วันที่</label></div></div></div>' +
+      '<div class="field span-all"><label><input type="checkbox" id="enSig"' + (e.sig !== false ? ' checked' : '') + '> พิมพ์ส่วนลงนาม (ที่เซ็นชื่อ ชื่อ ตำแหน่ง วันที่)</label></div></div></div>' +
 
       '<div class="card"><div class="section-title">2) ตำแหน่งบนต้นฉบับ <span class="sub" id="enSize"></span></div>' +
       '<div class="flex"><select class="inp" id="enAnchor" style="width:auto">' + A.opts([{ key: 'next', name: 'ต่อจากเกษียณเดิม' }, { key: 'bottom-left', name: 'มุมล่างซ้าย' }, { key: 'bottom-right', name: 'มุมล่างขวา' }, { key: 'below-text', name: 'ใต้ข้อความสุดท้าย' }, { key: 'top-right', name: 'ขวาบน' }, { key: 'left-margin', name: 'ขอบซ้ายกลางหน้า' }], pf.anchor) + '</select>' +
-      '<button class="btn btn-sm btn-primary" id="enAuto">🎯 หาที่ว่างอัตโนมัติ</button></div>' +
+      '<button class="btn btn-sm btn-primary" id="enAuto">หาที่ว่างอัตโนมัติ</button></div>' +
       '<div class="flex" style="margin-top:10px;align-items:flex-end">' +
       '<div class="field" style="width:80px"><label>หน้า</label><select id="enPage">' + A.opts(LS.doc.pages.map(function (p, i) { return { key: i, name: String(i + 1) }; }), e.page) + '</select></div>' +
       '<div class="field" style="width:100px"><label>ห่างซ้าย (มม.)</label><input type="number" step="0.5" id="enX" value="' + e.x + '"></div>' +
@@ -550,11 +550,11 @@
       '<div class="checks" id="enChecks"></div></div>' +
 
       '<div class="card"><div class="section-title">3) พิมพ์</div>' +
-      '<div class="flex"><button class="btn btn-outline" id="enTest">🧪 พิมพ์ทดสอบ (กระดาษเปล่า)</button>' +
-      '<button class="btn btn-primary" id="enReal">🖨️ พิมพ์ลงต้นฉบับ</button>' +
-      '<button class="btn btn-outline" id="enSheet">📄 พิมพ์แผ่นเกษียณต่อ</button>' +
+      '<div class="flex"><button class="btn btn-outline" id="enTest">พิมพ์ทดสอบ (กระดาษเปล่า)</button>' +
+      '<button class="btn btn-primary" id="enReal">พิมพ์ลงต้นฉบับ</button>' +
+      '<button class="btn btn-outline" id="enSheet">พิมพ์แผ่นเกษียณต่อ</button>' +
       '<button class="btn btn-ghost" id="enDraft">บันทึกร่าง</button><button class="btn btn-ghost" id="enNew">+ ร่างใหม่</button></div>' +
-      '<p class="hint" style="margin:8px 0 0">วิธีใส่ต้นฉบับ: <b>' + esc(EN.printerCfg().feedNote || 'ยังไม่ได้บันทึก (แท็บเครื่องพิมพ์)') + '</b> · หน้าต่างพิมพ์: A4 · ขอบ "ไม่มี" · มาตราส่วน 100% · ปิดส่วนหัว/ส่วนท้าย</p></div>' +
+      '<p class="hint" style="margin:8px 0 0">วิธีใส่ต้นฉบับ: <b>' + esc(EN.printerCfg().feedNote || 'ยังไม่ได้บันทึก (ตั้งค่า › เครื่องพิมพ์)') + '</b> · ตั้งค่าพิมพ์: A4 · ขอบ "ไม่มี" · 100% · ปิดส่วนหัว/ท้าย</p></div>' +
 
       '<div class="card"><div class="section-title">เกษียณของหนังสือฉบับนี้ <span class="sub">' + list.length + ' รายการ</span></div>' +
       (list.length ? list.map(function (x) {
@@ -658,7 +658,7 @@
     const bad = c.items.filter(function (x) { return x[0] === 'bad'; });
     const m = A.modal({
       title: 'พิมพ์ลงต้นฉบับ — ตรวจครั้งสุดท้าย', size: 'narrow',
-      body: '<div class="checks">' + c.items.map(function (x) { return '<div class="ck ' + x[0] + '">' + ({ ok: '✅', warn: '⚠️', bad: '⛔' }[x[0]]) + ' <span>' + x[1] + '</span></div>'; }).join('') + '</div>' +
+      body: '<div class="checks">' + c.items.map(function (x) { return '<div class="ck ' + x[0] + '">' + '<i>' + ({ ok: '✓', warn: '!', bad: '×' }[x[0]]) + '</i><span>' + x[1] + '</span></div>'; }).join('') + '</div>' +
         '<div class="alert info"><span class="ic">📥</span><span>ใส่<b>ต้นฉบับหน้า ' + (e.page + 1) + '</b> ครั้งละ 1 แผ่น: <b>' + esc(EN.printerCfg().feedNote || 'ตามวิธีที่ทดสอบไว้') + '</b></span></div>' +
         (bad.length ? '<div class="field" style="margin-top:10px"><label><input type="checkbox" id="prOverride"> ฉันตรวจแล้ว ยืนยันพิมพ์แม้มีรายการ ⛔</label></div>' : ''),
       foot: '<button class="btn btn-outline" data-close>ยกเลิก</button><button class="btn btn-primary" id="prGo">พิมพ์</button>'
@@ -711,11 +711,10 @@
         A.opts(printed.map(function (e) { return { key: e.id, name: 'หน้า ' + (e.page + 1) + ' · ' + (e.signerName || e.signerPos || '') + ' · ' + U.thDate(e.date, 'short') }; }), LS.lastPrintedId || printed[printed.length - 1].id) + '</select></div>' +
         '<div class="field span-all"><label>ภาพสแกนหน้าที่พิมพ์แล้ว (สแกน A4 100% แบบเดียวกับตอนรับ)</label><input type="file" id="vfF" accept="image/*,application/pdf"></div></div>' +
         '<div id="vfOut" style="margin-top:12px"></div>' : '<div class="empty">ยังไม่มีเกษียณที่บันทึกว่าพิมพ์แล้ว</div>') + '</div>' +
-      '<div class="card guide"><div class="section-title">หลักการ</div><ul class="small">' +
-      '<li>ระบบซ้อนภาพสแกนใหม่กับภาพต้นฉบับเดิม (เลื่อนหาจุดที่ตรงกันที่สุดเอง ±12 มม.)</li>' +
-      '<li>หมึกที่เพิ่มขึ้นมา = ข้อความที่พิมพ์ (แสดงเป็นสีแดง) เทียบกับกรอบที่ตั้งใจ (น้ำเงินประ)</li>' +
-      '<li>ได้ค่าคลาดเคลื่อนเป็นมิลลิเมตร → กด "ปรับค่าเครื่องพิมพ์" ครั้งต่อไปจะแม่นขึ้น</li>' +
-      '<li>ใช้เครื่องสแกนหรือแอปสแกนเอกสาร (เช่น Microsoft Lens) — ภาพถ่ายเอียงจะวัดไม่แม่น</li></ul></div>';
+      '<details class="fold"><summary>หลักการตรวจ</summary><ul>' +
+      '<li>ระบบซ้อนภาพสแกนใหม่กับภาพเดิม แล้วเทียบหมึกที่เพิ่ม (แดง) กับกรอบที่ตั้งใจ (น้ำเงินประ)</li>' +
+      '<li>ได้ค่าคลาดเคลื่อนเป็นมิลลิเมตร กด "ปรับค่าเครื่องพิมพ์" เพื่อให้ครั้งต่อไปแม่นขึ้น</li>' +
+      '<li>ใช้เครื่องสแกนหรือแอปสแกนเอกสาร ภาพถ่ายเอียงจะวัดไม่แม่น</li></ul></details>';
     if (!printed.length) return;
     $('vfF').onchange = async function () {
       const f = this.files[0]; if (!f) return;
