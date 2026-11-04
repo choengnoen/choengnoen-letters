@@ -23,7 +23,7 @@
     return Object.assign({
       id: newId(), kind: 'memo', status: 'draft', createdAt: new Date().toISOString(), createdBy: FBL.user.name,
       tplId: t.id || '', subject: t.subject || '', to: CFG.to, via: CFG.via[0], body: t.body || '', closing: t.closing || D.OUT_CLOSINGS[0],
-      thaiDigits: true, docSuffix: '', docDate: '', attachments: []
+      thaiDigits: true, docSuffix: '', docDate: '', urgency: '', attachments: []
     }, signerOf(defaultSigner()));
   }
 
@@ -60,6 +60,7 @@
       '.ob-l.j{white-space:normal;text-align:justify;text-align-last:justify;text-justify:inter-character;overflow:hidden}' +
       '.ob-head{position:relative;height:' + GARUDA + 'mm}.ob-head img{position:absolute;left:0;top:0;height:' + GARUDA + 'mm;width:auto}' +
       '.ob-title{position:absolute;left:0;right:0;bottom:0;text-align:center;font-weight:700;font-size:' + F.title.toFixed(2) + 'pt;line-height:35pt}' +
+      '.ob-urg{position:absolute;left:' + (GARUDA + 3) + 'mm;bottom:0;font-weight:700;font-size:' + F.label.toFixed(2) + 'pt;line-height:1.25}' +
       '.ob-row{position:relative;white-space:nowrap}.ob-row b{font-size:' + F.label.toFixed(2) + 'pt;position:absolute;left:0;bottom:0;line-height:1.25}' +
       '.ob-v{position:absolute;bottom:0;white-space:nowrap;overflow:hidden;border-bottom:.25mm dotted #000;line-height:' + F.row.toFixed(2) + 'mm;box-sizing:border-box}' +
       '.ob-to{position:relative;white-space:nowrap}' +
@@ -104,8 +105,9 @@
     const val = function (x, w, html, extra) { return '<span class="ob-v" style="left:' + x.toFixed(2) + 'mm;width:' + w.toFixed(2) + 'mm;' + (extra || '') + '">' + html + '</span>'; };
     const xOrg = F.lbl.org + GAP, xNo = F.lbl.no + GAP, xDate = F.xKho + F.lbl.date + GAP, xSubj = F.lbl.subj + GAP;
     const subj = splitLines(d(r.subject || ''), F, BODY_W - xSubj, 0);
-    let head = '<div class="ob-head"><img src="' + esc(CFG.garuda) + '" alt=""><div class="ob-title">บันทึกข้อความ</div></div>' +
-      '<div class="ob-row" style="height:' + R_ORG.toFixed(2) + 'mm"><b>ส่วนราชการ</b>' + val(xOrg, BODY_W - xOrg, esc(d(CFG.org)) + ' โทรศัพท์ ' + esc(d(CFG.phone))) + '</div>' +
+    const urg = r.urgency && r.urgency !== 'ปกติ' ? '<div class="ob-urg">' + esc(r.urgency) + '</div>' : '';
+    let head = '<div class="ob-head"><img src="' + esc(CFG.garuda) + '" alt="">' + urg + '<div class="ob-title">บันทึกข้อความ</div></div>' +
+      '<div class="ob-row" style="height:' + R_ORG.toFixed(2) + 'mm"><b>ส่วนราชการ</b>' + val(xOrg, BODY_W - xOrg, esc(d(CFG.org)) + ' โทร. ' + esc(d(CFG.phone))) + '</div>' +
       '<div class="ob-row" style="height:' + F.row.toFixed(2) + 'mm"><b>ที่</b>' + val(xNo, F.xKho - xNo - GAP, esc(d(fullNo(r)))) +
       '<b style="left:' + F.xKho.toFixed(2) + 'mm">วันที่</b>' + val(xDate, BODY_W - xDate, '') +
       '<span class="ob-v" style="left:' + xDate.toFixed(2) + 'mm;width:' + Math.max(0, F.xMonth - xDate).toFixed(2) + 'mm;text-align:center;border:0">' + esc(dayTxt) + '</span>' +
@@ -306,7 +308,25 @@
 
   /* ======================= หน้าร่าง ======================= */
   function setDirty() { OS.dirty = true; const h = $('ofDirty'); if (h) h.textContent = 'มีการแก้ไขที่ยังไม่บันทึก'; }
-  function schedulePreview() { clearTimeout(OS.timer); OS.timer = setTimeout(renderPreview, 250); }
+  function schedulePreview() { clearTimeout(OS.timer); OS.timer = setTimeout(renderPreview, 250); renderLint(); }
+  // ตรวจถ้อยคำตามหลักการเขียนหนังสือราชการ — เตือนเท่านั้น ไม่แก้ข้อความให้
+  function lintOf(r) {
+    const out = [], all = [r.subject, r.to, r.body, r.closing].join('\n');
+    String(r.body || '').split('\n').forEach(function (p) {
+      const t = p.trim();
+      if (/^(ด้วย|เนื่องจาก)/.test(t) && /นั้น\s*$/.test(t)) out.push('ย่อหน้าที่ขึ้นต้นด้วย "ด้วย/เนื่องจาก" ไม่ปิดด้วยคำว่า "นั้น": ' + t.slice(0, 30) + '...');
+    });
+    if (/\.{3,}/.test(all)) out.push('ยังมีจุดไข่ปลาที่ต้องกรอก');
+    if (/ข้าฯ/.test(all)) out.push('ไม่เขียนคำว่า "ข้าพเจ้า" ย่อเป็น "ข้าฯ"');
+    if (/เกษียณหนังสือ/.test(all)) out.push('"เกษียนหนังสือ" สะกดด้วย น (เกษียน = เขียน)');
+    return out;
+  }
+  function renderLint() {
+    const el = $('ofLint');
+    if (!el || !OS.rec) return;
+    const L = lintOf(OS.rec);
+    el.innerHTML = L.map(function (x) { return '<div class="hint" style="color:var(--warn)">• ' + esc(x) + '</div>'; }).join('');
+  }
   async function renderPreview() {
     const box = $('ofPreview');
     if (!box || !OS.rec) return;
@@ -335,10 +355,12 @@
       '<div class="grid grid-2">' +
       '<div class="field"><label>ที่</label><input value="' + esc(fullNo(r)) + '" disabled></div>' +
       '<div class="field"><label>ลงวันที่</label><input value="' + esc(U.thDate(r.docDate) || 'เว้นไว้ กรอกหลังลงนาม') + '" disabled></div>' +
+      '<div class="field"><label>ชั้นความเร็ว</label><select data-o="urgency">' + A.opts(D.URGENCY, r.urgency || D.URGENCY[0]) + '</select></div>' +
+      '<div class="field"></div>' +
       '<div class="field span-all"><label>เรื่อง</label><input data-o="subject" value="' + esc(r.subject) + '"></div>' +
       '<div class="field"><label>เรียน</label><input data-o="to" value="' + esc(r.to) + '"></div>' +
       '<div class="field"><label>ผ่าน (เว้นว่างได้)</label><input data-o="via" list="ofVia" value="' + esc(r.via) + '"><datalist id="ofVia">' + CFG.via.map(function (v) { return '<option value="' + esc(v) + '">'; }).join('') + '</datalist></div>' +
-      '<div class="field span-all"><label>เนื้อหา (ขึ้นบรรทัดใหม่ = ขึ้นย่อหน้าใหม่ ไม่ต้องเว้นวรรคเอง)</label><textarea data-o="body" rows="11">' + esc(r.body) + '</textarea></div>' +
+      '<div class="field span-all"><label>เนื้อหา (ขึ้นบรรทัดใหม่ = ขึ้นย่อหน้าใหม่ ไม่ต้องเว้นวรรคเอง)</label><textarea data-o="body" rows="11">' + esc(r.body) + '</textarea><span class="hint">ปกติมี 3 ย่อหน้า: ที่มา (ด้วย.../เนื่องจาก... หรือถ้าตอบ ตามที่...นั้น) · ความประสงค์ · ย้ำความประสงค์ (คำลงท้าย)</span><div id="ofLint"></div></div>' +
       '<div class="field span-all"><label>คำลงท้าย</label><input data-o="closing" list="ofCl" value="' + esc(r.closing) + '"><datalist id="ofCl">' + D.OUT_CLOSINGS.map(function (v) { return '<option value="' + esc(v) + '">'; }).join('') + '</datalist></div>' +
       '<div class="field span-all"><label>ผู้ลงนาม</label><select id="ofSigner">' + A.opts(ppl, r.signerId, 'กำหนดเอง') + '</select></div>' +
       '<div class="field"><label>ชื่อในวงเล็บ</label><input data-o="signerName" value="' + esc(r.signerName) + '"></div>' +
@@ -350,8 +372,11 @@
       '</div><p class="hint">หน้าต่างพิมพ์ต้องตั้ง: A4 · ระยะขอบ "ไม่มี" · มาตราส่วน 100% · ปิดส่วนหัว/ท้าย</p></div></div>';
 
     el.querySelectorAll('[data-o]').forEach(function (i) {
-      i.addEventListener('input', function () { r[i.dataset.o] = i.value; setDirty(); schedulePreview(); });
+      const onEdit = function () { r[i.dataset.o] = i.value; setDirty(); schedulePreview(); };
+      i.addEventListener('input', onEdit);
+      if (i.tagName === 'SELECT') i.addEventListener('change', onEdit);
     });
+    renderLint();
     $('ofSigner').onchange = function () {
       const p = A.person(this.value);
       r.signerId = this.value;

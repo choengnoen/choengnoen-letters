@@ -93,7 +93,7 @@ window.LTR_DATA = {
     via: ['รอ.ขท.ระยอง(ป.)', 'รอ.ขท.ระยอง(ว)'],
     signerId: 'p-head',
     fontKey: 'TH SarabunIT๙',
-    marginsMm: { top: 15, bottom: 20, left: 30, right: 20 },
+    marginsMm: { top: 25, bottom: 20, left: 30, right: 20 },
     sizesPt: { title: 29, label: 20, body: 16 }
   },
   OUT_CLOSINGS: ['จึงเรียนมาเพื่อโปรดพิจารณาอนุมัติ', 'จึงเรียนมาเพื่อโปรดพิจารณา', 'จึงเรียนมาเพื่อโปรดทราบ', 'จึงเรียนมาเพื่อโปรดพิจารณาดำเนินการต่อไป'],
