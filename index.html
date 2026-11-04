@@ -171,8 +171,9 @@ table.data td.c,table.data th.c{text-align:center}
 .guide h4{margin:14px 0 4px;color:var(--brand-900);font-size:15px}
 .guide li{margin-bottom:5px;font-size:14px}
 .guide table.data td{font-size:13.5px}
-.flow{display:flex;flex-wrap:wrap;gap:8px;align-items:stretch}
-.flow .fx{flex:1;min-width:140px;background:var(--paper-2);border-radius:10px;padding:10px 12px;font-size:13px;position:relative}
+.flow{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;align-items:stretch}
+@media(max-width:860px){.flow{grid-template-columns:1fr 1fr}}
+.flow .fx{min-width:0;background:var(--paper-2);border-radius:10px;padding:10px 12px;font-size:13px;position:relative}
 .flow .fx b{display:block;font-family:'Kanit',sans-serif;color:var(--brand-900);font-size:14px}
 .flow .fx.ai{background:#eef5ff;border:1px solid #9cc0ea}
 .flow .fx.me{background:var(--gold-bg);border:1px solid var(--gold)}
