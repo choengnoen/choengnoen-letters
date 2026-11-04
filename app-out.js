@@ -23,15 +23,16 @@
     return Object.assign({
       id: newId(), kind: 'memo', status: 'draft', createdAt: new Date().toISOString(), createdBy: FBL.user.name,
       tplId: t.id || '', subject: t.subject || '', to: CFG.to, via: CFG.via[0], body: t.body || '', closing: t.closing || D.OUT_CLOSINGS[0],
-      thaiDigits: true, docSuffix: '', docDate: '', urgency: '', attachments: []
+      thaiDigits: true, docSuffix: '', docDate: '', urgency: '', regAction: '', regNote: '', attachments: []
     }, signerOf(defaultSigner()));
   }
 
   /* ======================= จัดหน้า ======================= */
   const PAGE = { w: 210, h: 297, land: { w: 297, h: 210, m: 15 } };
   const M = CFG.marginsMm, BODY_W = PAGE.w - M.left - M.right, BODY_H = PAGE.h - M.top - M.bottom;
-  const PT = 25.4 / 72, PX = 96 / 25.4, IND = 25, BEFORE = 6 * PT;
-  const R_ORG = 35 * PT, GARUDA = 15, TEXT_CENTER = BODY_W / 2;
+  // ระยะยึดตามหนังสือตัวอย่างของแขวงทางหลวงระยอง (ไฟล์ Word) ยกเว้นตราครุฑสูง 1.5 ซม. (ระเบียบข้อ 71.2, 76) และชั้นความเร็วสีแดง 32 พอยท์ (ข้อ 28)
+  const PT = 25.4 / 72, PX = 96 / 25.4, IND = 25.4, BEFORE = 6 * PT, URGENCY_PT = 32;
+  const GARUDA = 15, GARUDA_TOP = -2.6, TITLE_GAP = 5.7, X_NO = 7.5, X_DATE = 77.5, X_VAL = 12.7, X_SIG = 76.2, SIG_GAP = 11.4;
   const seg = (typeof Intl !== 'undefined' && Intl.Segmenter) ? new Intl.Segmenter('th', { granularity: 'word' }) : null;
 
   function fontOf() {
@@ -39,14 +40,8 @@
     const F = { css: f.css + ',Sarabun,sans-serif', s: s, body: CFG.sizesPt.body * s, label: CFG.sizesPt.label * s, title: CFG.sizesPt.title * s };
     const c = document.createElement('canvas').getContext('2d');
     F.line = F.body * PT * 1.3;    // ระยะบรรทัดปกติ (Single) ของแบบอักษรสารบรรณโดยประมาณ
-    F.row = F.label * PT * 1.25;   // แถว "ที่" และ "เรื่อง"
-    // ตำแหน่งอ้างอิงจากคำว่า "บันทึกข้อความ" ที่จัดกึ่งกลาง: "วันที่" ตรงตัว ข · ชื่อเดือนเริ่มหลังตัว ม
-    const w = function (t, font) { c.font = font; return c.measureText(t).width / PX; };
-    const tf = '700 ' + F.title + 'pt ' + F.css, lf = '700 ' + F.label + 'pt ' + F.css;
-    const left = TEXT_CENTER - w('บันทึกข้อความ', tf) / 2;
-    F.xKho = left + w('บันทึก', tf);
-    F.xMonth = left + w('บันทึกข้อความ', tf);
-    F.lbl = { org: w('ส่วนราชการ', lf), no: w('ที่', lf), date: w('วันที่', lf), subj: w('เรื่อง', lf) };
+    F.row = F.label * PT * 1.3;    // แถวส่วนราชการ / ที่ / เรื่อง / เรียน
+    F.titleH = F.title * PT * 1.3;
     c.font = F.body + 'pt ' + F.css;
     F.textW = function (t) { return c.measureText(t).width / PX; };
     return F;
@@ -58,14 +53,14 @@
       '.land .ob-in{left:15mm;top:15mm;width:267mm;height:180mm}' +
       '.ob-l{height:' + F.line.toFixed(2) + 'mm;line-height:' + F.line.toFixed(2) + 'mm;white-space:nowrap}' +
       '.ob-l.j{white-space:normal;text-align:justify;text-align-last:justify;text-justify:inter-character;overflow:hidden}' +
-      '.ob-head{position:relative;height:' + GARUDA + 'mm}.ob-head img{position:absolute;left:0;top:0;height:' + GARUDA + 'mm;width:auto}' +
-      '.ob-title{position:absolute;left:0;right:0;bottom:0;text-align:center;font-weight:700;font-size:' + F.title.toFixed(2) + 'pt;line-height:35pt}' +
-      '.ob-urg{position:absolute;left:' + (GARUDA + 3) + 'mm;bottom:0;font-weight:700;font-size:' + F.label.toFixed(2) + 'pt;line-height:1.25}' +
-      '.ob-row{position:relative;white-space:nowrap}.ob-row b{font-size:' + F.label.toFixed(2) + 'pt;position:absolute;left:0;bottom:0;line-height:1.25}' +
-      '.ob-v{position:absolute;bottom:0;white-space:nowrap;overflow:hidden;border-bottom:.25mm dotted #000;line-height:' + F.row.toFixed(2) + 'mm;box-sizing:border-box}' +
-      '.ob-to{position:relative;white-space:nowrap}' +
+      '.ob-head{position:relative;height:' + F.titleH.toFixed(2) + 'mm;margin-bottom:' + TITLE_GAP + 'mm}.ob-head img{position:absolute;left:0;top:' + GARUDA_TOP + 'mm;height:' + GARUDA + 'mm;width:auto}' +
+      '.ob-title{text-align:center;font-weight:700;font-size:' + F.title.toFixed(2) + 'pt;line-height:' + F.titleH.toFixed(2) + 'mm}' +
+      '.ob-urg{position:absolute;left:' + (GARUDA + 3) + 'mm;bottom:0;color:#d00000;-webkit-print-color-adjust:exact;print-color-adjust:exact;white-space:nowrap;font-weight:700;font-size:' + (URGENCY_PT * F.s).toFixed(2) + 'pt;line-height:' + F.titleH.toFixed(2) + 'mm}' +
+      '.ob-row{height:' + F.row.toFixed(2) + 'mm;line-height:' + F.row.toFixed(2) + 'mm;white-space:nowrap}.ob-row b{font-size:' + F.label.toFixed(2) + 'pt}' +
+      '.ob-c{display:inline-block;white-space:nowrap}' +
+      '.ob-to-l{font-size:' + F.label.toFixed(2) + 'pt}' +
       '.ob-pn{text-align:center;height:8mm;line-height:8mm}' +
-      '.ob-sig{position:relative;text-align:center;padding-top:' + (F.line * 3).toFixed(2) + 'mm}' +
+      '.ob-sig{position:relative;text-align:center;padding-top:' + SIG_GAP + 'mm}' +
       '.ob-sig div{height:' + F.line.toFixed(2) + 'mm;line-height:' + F.line.toFixed(2) + 'mm;white-space:nowrap}' +
       '.ob-att-t{text-align:center;font-weight:700;font-size:' + F.label.toFixed(2) + 'pt;line-height:10mm;height:10mm;white-space:nowrap;overflow:hidden}' +
       '.ob-att-s{text-align:center;line-height:' + F.line.toFixed(2) + 'mm;height:' + F.line.toFixed(2) + 'mm;white-space:nowrap;overflow:hidden}' +
@@ -95,27 +90,23 @@
 
   // แปลงเนื้อหาเป็นก้อน { h, html } แล้วแบ่งหน้า · ท้ายหนังสือ (คำลงท้าย + ลงนาม) ห้ามแยกจากกัน และต้องมีเนื้อหาตามไปอย่างน้อย 2 บรรทัดถ้าขึ้นหน้าใหม่
   function memoSheets(r, F) {
-    const d = function (s) { return r.thaiDigits === false ? String(s || '') : U.toThaiDigits(s || ''); };
+    const d = function (s) { return r.thaiDigits === false ? U.toArabic(s || '') : U.toThaiDigits(s || ''); };
     const now = U.parseIso(U.today());
     const dd = U.parseIso(r.docDate);
     const dayTxt = dd ? d(String(dd.getDate())) : '';
     const monthTxt = d(U.MONTHS[(dd || now).getMonth()] + ' ' + ((dd || now).getFullYear() + 543));
-    const lineH = F.line, GAP = 1.5;
-    // ค่าที่อยู่หลังหัวข้อ มีจุดไข่ปลาตลอดช่อง ตามแบบบันทึกข้อความ
-    const val = function (x, w, html, extra) { return '<span class="ob-v" style="left:' + x.toFixed(2) + 'mm;width:' + w.toFixed(2) + 'mm;' + (extra || '') + '">' + html + '</span>'; };
-    const xOrg = F.lbl.org + GAP, xNo = F.lbl.no + GAP, xDate = F.xKho + F.lbl.date + GAP, xSubj = F.lbl.subj + GAP;
-    const subj = splitLines(d(r.subject || ''), F, BODY_W - xSubj, 0);
+    const lineH = F.line;
+    const col = function (w, html) { return '<span class="ob-c" style="width:' + w + 'mm">' + html + '</span>'; };
+    const subj = splitLines(d(r.subject || ''), F, BODY_W - X_VAL, 0);
     const urg = r.urgency && r.urgency !== 'ปกติ' ? '<div class="ob-urg">' + esc(r.urgency) + '</div>' : '';
+    const blankDay = '          ';
     let head = '<div class="ob-head"><img src="' + esc(CFG.garuda) + '" alt="">' + urg + '<div class="ob-title">บันทึกข้อความ</div></div>' +
-      '<div class="ob-row" style="height:' + R_ORG.toFixed(2) + 'mm"><b>ส่วนราชการ</b>' + val(xOrg, BODY_W - xOrg, esc(d(CFG.org)) + ' โทร. ' + esc(d(CFG.phone))) + '</div>' +
-      '<div class="ob-row" style="height:' + F.row.toFixed(2) + 'mm"><b>ที่</b>' + val(xNo, F.xKho - xNo - GAP, esc(d(fullNo(r)))) +
-      '<b style="left:' + F.xKho.toFixed(2) + 'mm">วันที่</b>' + val(xDate, BODY_W - xDate, '') +
-      '<span class="ob-v" style="left:' + xDate.toFixed(2) + 'mm;width:' + Math.max(0, F.xMonth - xDate).toFixed(2) + 'mm;text-align:center;border:0">' + esc(dayTxt) + '</span>' +
-      '<span class="ob-v" style="left:' + F.xMonth.toFixed(2) + 'mm;border:0">' + esc(monthTxt) + '</span></div>' +
-      '<div class="ob-row" style="height:' + F.row.toFixed(2) + 'mm"><b>เรื่อง</b>' + val(xSubj, BODY_W - xSubj, esc(subj[0] || '')) + '</div>';
-    subj.slice(1).forEach(function (x) { head += '<div class="ob-row" style="height:' + lineH.toFixed(2) + 'mm">' + val(xSubj, BODY_W - xSubj, esc(x)) + '</div>'; });
-    head += '<div class="ob-l ob-to" style="margin-top:' + BEFORE.toFixed(2) + 'mm">เรียน<span style="position:absolute;left:' + xSubj.toFixed(2) + 'mm">' + esc(d(r.to)) + (r.via ? '&nbsp;&nbsp;&nbsp;&nbsp;ผ่าน ' + esc(d(r.via)) : '') + '</span></div>';
-    const headH = GARUDA + R_ORG + F.row * 2 + lineH * Math.max(0, subj.length - 1) + BEFORE + lineH;
+      '<div class="ob-row"><b>ส่วนราชการ</b>&nbsp;&nbsp;' + esc(d(CFG.org)) + ' โทรศัพท์ ' + esc(d(CFG.phone)) + '</div>' +
+      '<div class="ob-row">' + col(X_DATE, col(X_NO, '<b>ที่</b>') + esc(d(fullNo(r)))) + '<b>วันที่</b>&nbsp;&nbsp;' + (dayTxt ? esc(dayTxt) + ' ' : blankDay) + esc(monthTxt) + '</div>' +
+      '<div class="ob-row">' + col(X_VAL, '<b>เรื่อง</b>') + esc(subj[0] || '') + '</div>';
+    subj.slice(1).forEach(function (x) { head += '<div class="ob-l" style="padding-left:' + X_VAL + 'mm">' + esc(x) + '</div>'; });
+    head += '<div class="ob-row">' + col(X_VAL, '<span class="ob-to-l">เรียน</span>') + esc(d(r.to)) + (r.via ? '&nbsp;&nbsp;&nbsp;&nbsp;ผ่าน ' + esc(d(r.via)) : '') + '</div>';
+    const headH = F.titleH + TITLE_GAP + F.row * 4 + lineH * Math.max(0, subj.length - 1);
 
     const blocks = [];
     String(r.body || '').replace(/\r/g, '').split('\n').forEach(function (raw) {
@@ -127,13 +118,13 @@
         blocks.push({ h: lineH + (i === 0 ? BEFORE : 0), html: '<div class="ob-l' + (last ? '' : ' j') + '" style="' + (i === 0 ? 'margin-top:' + BEFORE.toFixed(2) + 'mm;padding-left:' + IND + 'mm;' : '') + '">' + esc(x) + '</div>' });
       });
     });
-    // ชื่อเริ่มที่แนวกึ่งกลาง เว้น 3 บรรทัดจากข้อความ · ชื่อกับตำแหน่งอยู่กึ่งกลางซึ่งกันและกัน
+    // ชื่อกับตำแหน่งอยู่กึ่งกลางซึ่งกันและกัน เริ่มที่ระยะเดียวกับหนังสือตัวอย่าง
     const nameTxt = '(' + d(r.signerName || '') + ')', posTxt = d(r.signerPos || '');
     const sigW = Math.max(F.textW(nameTxt), F.textW(posTxt)) + 1;
-    const sigX = Math.max(0, Math.min(TEXT_CENTER, BODY_W - sigW));
+    const sigX = Math.max(0, Math.min(X_SIG, BODY_W - sigW));
     const sign = '<div class="ob-l" style="margin-top:' + BEFORE.toFixed(2) + 'mm;padding-left:' + IND + 'mm">' + esc(d(r.closing || '')) + '</div>' +
       '<div class="ob-sig" style="margin-left:' + sigX.toFixed(2) + 'mm;width:' + sigW.toFixed(2) + 'mm"><div>' + esc(nameTxt) + '</div><div>' + esc(posTxt) + '</div></div>';
-    const signH = BEFORE + lineH + lineH * 3 + lineH * 2;
+    const signH = BEFORE + lineH + SIG_GAP + lineH * 2;
 
     const pages = [[head]];
     let used = headH;
@@ -156,7 +147,7 @@
 
   // ใบแยก 1 รายการ อาจกินหลายแผ่น ตามจำนวนรูปและแบบที่เลือก — ทุกแผ่นมีช่องลงนามตำแหน่งเดียวกันด้านล่างขวา
   function attachSheets(r) {
-    const d = function (s) { return r.thaiDigits === false ? String(s || '') : U.toThaiDigits(s || ''); };
+    const d = function (s) { return r.thaiDigits === false ? U.toArabic(s || '') : U.toThaiDigits(s || ''); };
     const out = [];
     (r.attachments || []).forEach(function (a) {
       const imgs = a.images || [];
@@ -199,35 +190,68 @@
       '<script>document.fonts.ready.then(function(){setTimeout(function(){window.focus();window.print();},300)});<\/script></body></html>');
   }
 
-  function printBook() {
-    const months = {};
-    issued().forEach(function (r) { const k = String(r.docDate || '').slice(0, 7); if (k) months[k] = true; });
-    const keys = Object.keys(months).sort().reverse();
+  // รหัส 'YYYY' = ทั้งปี, 'YYYY-MM' = รายเดือน
+  function periodLabel(k) {
+    const p = k.split('-');
+    return p[1] ? 'เดือน' + U.MONTHS[+p[1] - 1] + ' ' + (+p[0] + 543) : 'พ.ศ. ' + (+p[0] + 543);
+  }
+  function periodKeys() {
+    const set = {};
+    issued().forEach(function (r) { const s = String(r.docDate || ''); if (s) { set[s.slice(0, 7)] = true; set[s.slice(0, 4)] = true; } });
+    // เรียงเดือนล่าสุดก่อน และให้ "ทั้งปี" อยู่ก่อนเดือนของปีนั้น
+    return Object.keys(set).sort(function (a, b) {
+      const y = b.slice(0, 4).localeCompare(a.slice(0, 4));
+      return y || (a.length - b.length) || b.localeCompare(a);
+    });
+  }
+  function printTable(o, period, rows) {
+    const F = fontOf();
+    EN.sendToPrinter('<!DOCTYPE html><html lang="th"><head><meta charset="utf-8"><title>' + esc(o.title) + '</title>' +
+      '<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&display=swap" rel="stylesheet">' +
+      '<style>@page{size:297mm 210mm;margin:12mm}body{margin:0;font-family:' + F.css + ';font-size:' + (15 * F.s).toFixed(1) + 'pt}' +
+      'h1{font-size:' + (20 * F.s).toFixed(1) + 'pt;text-align:center;margin:0 0 2mm}.n{text-align:right;font-size:' + (13 * F.s).toFixed(1) + 'pt}' +
+      'table{width:100%;border-collapse:collapse}th,td{border:.2mm solid #000;padding:1mm 2mm;vertical-align:top}th{text-align:center}.c{text-align:center}thead{display:table-header-group}tr{break-inside:avoid}</style></head><body>' +
+      '<div class="n">' + esc(o.code) + '</div><h1>' + esc(o.title) + '</h1><div style="text-align:center;margin-bottom:3mm">' + esc(U.toThaiDigits(period)) + '</div>' +
+      '<table><thead><tr>' + o.head.map(function (h) { return '<th' + (h[1] ? ' style="width:' + h[1] + '%"' : '') + '>' + esc(h[0]) + '</th>'; }).join('') + '</tr></thead><tbody>' +
+      rows.map(o.row).join('') + '</tbody></table>' +
+      '<script>document.fonts.ready.then(function(){setTimeout(function(){window.focus();window.print();},300)});<\/script></body></html>');
+  }
+  function printDialog(o) {
+    const keys = periodKeys();
     if (!keys.length) return A.toast('ยังไม่มีหนังสือที่ออกเลขแล้ว', true);
-    const label = function (k) { const p = k.split('-'); return U.MONTHS[+p[1] - 1] + ' ' + (+p[0] + 543); };
+    const first = keys.find(function (k) { return k.length === 7; });
     const m = A.modal({
-      title: 'พิมพ์สมุดส่งหนังสือ (บ.1-03)', size: 'narrow',
-      body: '<div class="field"><label>เดือน</label><select id="obkM">' + A.opts(keys.map(function (k) { return { key: k, name: label(k) }; }), keys[0]) + '</select></div>' +
-        '<p class="hint">ช่องหน่วยรับ ผู้รับ และวันและเวลา เว้นว่างไว้ให้ผู้รับเขียนตอนนำส่ง</p>',
+      title: 'พิมพ์' + o.title + ' (' + o.codeLabel + ')', size: 'narrow',
+      body: '<div class="field"><label>ช่วงเวลา</label><select id="obkM">' + A.opts(keys.map(function (k) { return { key: k, name: k.length === 4 ? 'ทั้งปี ' + (+k + 543) : periodLabel(k).replace('เดือน', '') }; }), first) + '</select></div>' +
+        '<p class="hint">' + esc(o.hint) + '</p>',
       foot: '<button class="btn btn-outline" data-close>ยกเลิก</button><button class="btn btn-primary" id="obkGo">พิมพ์</button>'
     });
     m.q('#obkGo').onclick = function () {
       const k = m.q('#obkM').value;
-      const rows = issued().filter(function (r) { return String(r.docDate || '').slice(0, 7) === k; }).sort(function (a, b) { return numOf(a) - numOf(b); });
-      const body = rows.map(function (r) {
-        return '<tr><td class="c">' + esc(U.toThaiDigits(r.docSuffix || '')) + '</td><td>' + esc(U.toThaiDigits(U.thDate(r.docDate, 'short'))) + '</td><td>ม.เชิงเนิน</td><td>' + esc(U.toThaiDigits(r.to || '')) + '</td><td></td><td></td><td></td><td>' + esc(U.toThaiDigits(r.subject || '')) + '</td></tr>';
-      }).join('');
-      const F = fontOf();
-      EN.sendToPrinter('<!DOCTYPE html><html lang="th"><head><meta charset="utf-8"><title>สมุดส่งหนังสือ</title>' +
-        '<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&display=swap" rel="stylesheet">' +
-        '<style>@page{size:297mm 210mm;margin:12mm}body{margin:0;font-family:' + F.css + ';font-size:' + (15 * F.s).toFixed(1) + 'pt}' +
-        'h1{font-size:' + (20 * F.s).toFixed(1) + 'pt;text-align:center;margin:0 0 2mm}.n{text-align:right;font-size:' + (13 * F.s).toFixed(1) + 'pt}' +
-        'table{width:100%;border-collapse:collapse}th,td{border:.2mm solid #000;padding:1mm 2mm;vertical-align:top}th{text-align:center}.c{text-align:center}thead{display:table-header-group}tr{break-inside:avoid}</style></head><body>' +
-        '<div class="n">บ.๑-๐๓</div><h1>สมุดส่งหนังสือ</h1><div style="text-align:center;margin-bottom:3mm">เดือน' + esc(U.toThaiDigits(label(k))) + '</div>' +
-        '<table><thead><tr><th style="width:8%">เลขทะเบียน</th><th style="width:9%">ลงวันที่</th><th style="width:9%">จาก</th><th style="width:13%">ถึง</th><th style="width:10%">หน่วยรับ</th><th style="width:10%">ผู้รับ</th><th style="width:10%">วันและเวลา</th><th>หมายเหตุ (เรื่อง)</th></tr></thead><tbody>' + body + '</tbody></table>' +
-        '<script>document.fonts.ready.then(function(){setTimeout(function(){window.focus();window.print();},300)});<\/script></body></html>');
+      const rows = issued().filter(function (r) { return String(r.docDate || '').slice(0, k.length) === k; }).sort(function (a, b) { return numOf(a) - numOf(b); });
+      printTable(o, periodLabel(k), rows);
       m.close();
     };
+  }
+  const cell = function (s, cls) { return '<td' + (cls ? ' class="' + cls + '"' : '') + '>' + esc(U.toThaiDigits(s || '')) + '</td>'; };
+  function printBook() {
+    printDialog({
+      title: 'สมุดส่งหนังสือ', code: 'บ.๑-๐๓', codeLabel: 'บ.1-03',
+      hint: 'ช่องหน่วยรับ ผู้รับ และวันและเวลา เว้นว่างไว้ให้ผู้รับเขียนตอนนำส่ง',
+      head: [['เลขทะเบียน', 8], ['ลงวันที่', 9], ['จาก', 9], ['ถึง', 13], ['หน่วยรับ', 10], ['ผู้รับ', 10], ['วันและเวลา', 10], ['หมายเหตุ (เรื่อง)']],
+      row: function (r) { return '<tr>' + cell(r.docSuffix, 'c') + cell(U.thDate(r.docDate, 'short')) + '<td>ม.เชิงเนิน</td>' + cell(r.to) + '<td></td><td></td><td></td>' + cell(r.subject) + '</tr>'; }
+    });
+  }
+  // ทะเบียนหนังสือส่งตามแบบที่ 14 ท้ายระเบียบงานสารบรรณ (ข้อ 43.1)
+  function printRegister() {
+    printDialog({
+      title: 'ทะเบียนหนังสือส่ง', code: 'แบบที่ ๑๔', codeLabel: 'แบบที่ 14',
+      hint: 'พิมพ์เฉพาะหนังสือที่ออกเลขแล้ว เรียงตามเลขทะเบียนส่ง · ช่องการปฏิบัติและหมายเหตุที่ยังไม่กรอกจะเว้นว่างไว้',
+      head: [['เลขทะเบียนส่ง', 7], ['ที่', 13], ['ลงวันที่', 9], ['จาก', 11], ['ถึง', 11], ['เรื่อง'], ['การปฏิบัติ', 14], ['หมายเหตุ', 10]],
+      row: function (r) {
+        return '<tr>' + cell(r.docSuffix, 'c') + cell(CFG.docPrefix.replace(/\/$/, '')) + cell(U.thDate(r.docDate, 'short')) + cell(r.signerPos || 'ม.เชิงเนิน') + cell(r.to) + cell(r.subject) + cell(r.regAction) + cell(r.regNote) + '</tr>';
+      }
+    });
   }
 
   /* ======================= ทะเบียนส่ง ======================= */
@@ -238,7 +262,7 @@
     if (ui.st !== 'all') rows = rows.filter(function (r) { return r.status === ui.st; });
     if (ui.q) {
       const q = U.toArabic(ui.q).toLowerCase();
-      rows = rows.filter(function (r) { return U.toArabic([r.docSuffix, r.subject, r.to, r.body].join(' ')).toLowerCase().indexOf(q) >= 0; });
+      rows = rows.filter(function (r) { return U.toArabic([r.docSuffix, r.subject, r.to, r.body, r.regAction, r.regNote].join(' ')).toLowerCase().indexOf(q) >= 0; });
     }
     rows.sort(function (a, b) {
       if (a.status !== b.status) return a.status === 'draft' ? -1 : 1;
@@ -246,18 +270,19 @@
       return String(b.updatedAt || '').localeCompare(String(a.updatedAt || ''));
     });
     el.innerHTML = '<div class="card"><div class="section-title">ทะเบียนหนังสือส่ง <span class="sub">' + rows.length + ' ฉบับ</span>' +
-      '<span class="right"><button class="btn btn-sm btn-outline" id="olBook">พิมพ์ บ.1-03</button><button class="btn btn-sm btn-primary" id="olNew">+ ร่างบันทึกข้อความ</button></span></div>' +
+      '<span class="right"><button class="btn btn-sm btn-outline" id="olReg">พิมพ์ทะเบียนส่ง</button><button class="btn btn-sm btn-outline" id="olBook">พิมพ์ บ.1-03</button><button class="btn btn-sm btn-primary" id="olNew">+ ร่างบันทึกข้อความ</button></span></div>' +
       '<div class="toolbar"><input class="inp grow" id="olQ" placeholder="ค้นหา เลขที่ / เรื่อง / เรียน / เนื้อหา" value="' + esc(ui.q) + '"><select class="inp" id="olSt">' +
       A.opts([{ key: 'all', name: 'ทั้งหมด' }, { key: 'draft', name: 'ร่าง' }, { key: 'issued', name: 'ออกแล้ว' }], ui.st) + '</select></div>' +
-      (rows.length ? '<div class="table-wrap"><table class="data"><thead><tr><th>เลขที่</th><th>ลงวันที่</th><th>เรื่อง</th><th>เรียน</th><th>ใบแยก</th><th>สถานะ</th><th></th></tr></thead><tbody>' +
+      (rows.length ? '<div class="table-wrap"><table class="data"><thead><tr><th>เลขที่</th><th>ลงวันที่</th><th>เรื่อง</th><th>เรียน</th><th>การปฏิบัติ</th><th>หมายเหตุ</th><th>ใบแยก</th><th>สถานะ</th><th></th></tr></thead><tbody>' +
         rows.map(function (r) {
-          return '<tr class="clickable" data-oopen="' + esc(r.id) + '"><td class="nowrap">' + esc(r.docSuffix || '-') + '</td><td class="nowrap">' + esc(U.thDate(r.docDate, 'short')) + '</td><td>' + esc(r.subject || '(ยังไม่มีเรื่อง)') + '</td><td class="small">' + esc(r.to || '') + '</td>' +
+          return '<tr class="clickable" data-oopen="' + esc(r.id) + '"><td class="nowrap">' + esc(r.docSuffix || '-') + '</td><td class="nowrap">' + esc(U.thDate(r.docDate, 'short')) + '</td><td>' + esc(r.subject || '(ยังไม่มีเรื่อง)') + '</td><td class="small">' + esc(r.to || '') + '</td><td class="small">' + esc(r.regAction || '') + '</td><td class="small">' + esc(r.regNote || '') + '</td>' +
             '<td class="c">' + ((r.attachments || []).length || '') + '</td><td><span class="badge ' + (r.status === 'issued' ? 'b-ok' : 'b-info') + '">' + (r.status === 'issued' ? 'ออกแล้ว' : 'ร่าง') + '</span></td>' +
             '<td class="nowrap"><button class="btn btn-sm btn-outline" data-ocopy="' + esc(r.id) + '">คัดลอก</button></td></tr>';
         }).join('') + '</tbody></table></div>' : '<div class="empty">ยังไม่มีหนังสือส่ง — กด "+ ร่างบันทึกข้อความ"</div>') +
       '<p class="hint" style="margin-top:10px">ดับเบิลคลิกแถวเพื่อเปิด · คัดลอกจะได้ร่างใหม่ที่ไม่มีเลขที่ วันที่ และรูป</p></div>';
     $('olNew').onclick = newDialog;
     $('olBook').onclick = printBook;
+    $('olReg').onclick = printRegister;
     const q = $('olQ');
     q.oninput = function () { ui.q = q.value; clearTimeout(q._t); q._t = setTimeout(function () { A.render(); const n = $('olQ'); n.focus(); n.setSelectionRange(n.value.length, n.value.length); }, 300); };
     $('olSt').onchange = function () { ui.st = this.value; A.render(); };
@@ -291,7 +316,7 @@
     const r = A.outs().find(function (x) { return x.id === id; });
     if (!r) return;
     const c = JSON.parse(JSON.stringify(r));
-    Object.assign(c, { id: newId(), status: 'draft', docSuffix: '', docDate: '', createdAt: new Date().toISOString(), createdBy: FBL.user.name, copiedFrom: r.id });
+    Object.assign(c, { id: newId(), status: 'draft', docSuffix: '', docDate: '', regAction: '', regNote: '', createdAt: new Date().toISOString(), createdBy: FBL.user.name, copiedFrom: r.id });
     delete c.updatedAt; delete c.updatedBy;
     (c.attachments || []).forEach(function (a) { a.images = []; });
     startEdit(c, true);
@@ -366,6 +391,9 @@
       '<div class="field"><label>ตำแหน่งใต้ชื่อ</label><input data-o="signerPos" value="' + esc(r.signerPos) + '"></div>' +
       '<div class="field span-all"><label><input type="checkbox" id="ofThai"' + (r.thaiDigits === false ? '' : ' checked') + '>แปลงตัวเลขทั้งฉบับเป็นเลขไทย</label></div></div></div>' +
       '<div class="card"><div class="section-title">ใบแยก <span class="sub">ใบแนบรูป/ผัง มีช่องลงนามของผู้ลงนามด้านล่างขวาทุกแผ่น</span><span class="right"><button class="btn btn-sm btn-outline" id="ofAddAtt">+ เพิ่มใบแยก</button></span></div><div id="ofAtts"></div></div>' +
+      '<div class="card"><div class="section-title">ทะเบียนส่ง <span class="sub">ลงในทะเบียนหนังสือส่ง แบบที่ 14</span></div><div class="grid grid-2">' +
+      '<div class="field"><label>การปฏิบัติ</label><input data-o="regAction" value="' + esc(r.regAction || '') + '" placeholder="เช่น ส่งแขวงแล้ว รอตอบ"></div>' +
+      '<div class="field"><label>หมายเหตุ</label><input data-o="regNote" value="' + esc(r.regNote || '') + '"></div></div></div>' +
       '<div class="flex" style="margin-bottom:16px"><button class="btn btn-primary" id="ofSave">บันทึก</button><button class="btn btn-outline" id="ofPrint">พิมพ์ / บันทึก PDF</button>' +
       (r.status === 'issued' ? '<button class="btn btn-outline" id="ofIssue">แก้เลขที่/วันที่</button><button class="btn btn-outline" id="ofUndo">กลับเป็นร่าง</button>' : '<button class="btn btn-gold" id="ofIssue">กรอกเลขที่หลังลงนาม</button>') +
       '</div><p class="hint">หน้าต่างพิมพ์ต้องตั้ง: A4 · ระยะขอบ "ไม่มี" · มาตราส่วน 100% · ปิดส่วนหัว/ท้าย</p></div></div>';
